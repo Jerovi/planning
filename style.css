@@ -1,0 +1,16 @@
+canvas { max-height: 360px; }
+.small { font-size: 0.85rem; }
+.dataset-select {
+  background: linear-gradient(90deg,#eef2ff,#e0f2fe);
+  border: 1px solid rgba(99,102,241,0.25);
+  box-shadow: 0 6px 18px rgba(99,102,241,0.08);
+}
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display:flex; align-items:center; justify-content:center; z-index:60;
+}
+/* Dropdown */
+.dropdown-menu { display:none; }
+td.remarks { text-align:left; vertical-align:middle; padding:0.6rem; white-space:pre-wrap; }
+/* small styling tweaks */
+.chart-wrap { height:auto; }

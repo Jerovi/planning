@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CHED Report — Master (CHED + Research + Extension Services)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Chart.js and DataLabels -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+<!-- html2canvas + jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-slate-50 min-h-screen p-6 text-slate-800">
+  <main class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-center mb-4">ACCOMPLISHMENT OF HIGHER EDUCATION — MASTER</h1>
+
+    <div class="flex flex-wrap gap-3 justify-center mb-4 items-center">
+      <button id="backBtn" class="bg-gray-600 text-white px-3 py-2 rounded" aria-label="Back">⬅ Back</button>
+
+      <div class="dataset-select rounded-lg px-3 py-2 flex items-center gap-3">
+        <label for="datasetSelector" class="font-medium">Dataset</label>
+        <select id="datasetSelector" class="px-4 py-2 rounded-md bg-white border">
+          <option value="ched">Higher Education</option>
+          <option value="research">Research Program</option>
+          <option value="extension">Extension Services</option>
+        </select>
+        <button id="manageDataBtn" class="ml-2 bg-indigo-600 text-white px-3 py-1 rounded">Manage Data</button>
+      </div>
+
+      <!-- Dropdown for PDF Export -->
+      <div class="relative dropdown">
+        <button id="dropdownBtn" class="bg-blue-600 text-white px-3 py-2 rounded inline-flex items-center" aria-haspopup="true" aria-expanded="false" type="button">
+          📥 Download PDF ▼
+        </button>
+        <ul id="dropdownMenu" class="absolute dropdown-menu bg-white shadow-lg rounded mt-1 w-56 right-0 z-50" role="menu" aria-hidden="true">
+          <li role="none"><button id="downloadCurrentPDF" class="block px-4 py-2 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none text-left w-full" role="menuitem" tabindex="-1">Download Current Dataset</button></li>
+          <li role="none"><button id="downloadAllPDF" class="block px-4 py-2 hover:bg-slate-100 focus:bg-slate-100 focus:outline-none text-left w-full" role="menuitem" tabindex="-1">Download All Datasets</button></li>
+        </ul>
+      </div>
+
+      <button id="clearData" class="bg-red-600 text-white px-3 py-2 rounded">🗑 Clear Current Dataset</button>
+      <div id="status" class="text-sm text-slate-600 ml-2 self-center">No data</div>
+    </div>
+
+    <!-- Table -->
+    <section id="reportContent" class="bg-white p-6 rounded-xl shadow mb-6">
+      <div class="overflow-x-auto">
+        <table class="w-full border text-sm text-center">
+          <thead class="bg-slate-100">
+            <tr>
+              <th class="p-2 border">Indicator</th>
+              <th class="p-2 border">Q1</th>
+              <th class="p-2 border">Q2</th>
+              <th class="p-2 border">Q3</th>
+              <th class="p-2 border">Q4</th>
+              <th class="p-2 border">Total</th>
+              <th class="p-2 border">Percentage (%)</th>
+              <th class="p-2 border">Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="reportTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Two Charts: percentChart (percentages) and wholeChart (raw counts) -->
+    <section class="bg-white p-4 rounded-xl shadow mb-6">
+      <div class="flex flex-col items-center mb-4">
+        <label for="chartSelector" class="text-lg font-semibold mb-2 flex items-center">
+          📊 Select Report View:
+        </label>
+        <select id="chartSelector"
+          class="px-5 py-3 text-white bg-indigo-600 rounded-lg shadow-md font-semibold text-base hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-indigo-400">
+          <option value="overall">Overall Performance</option>
+          <option value="Q1">Quarter 1</option>
+          <option value="Q2">Quarter 2</option>
+          <option value="Q3">Quarter 3</option>
+          <option value="Q4">Quarter 4</option>
+        </select>
+      </div>
+
+      <div id="chartWrap" class="chart-wrap">
+        <!-- Percent chart (shows % style indicators). Hidden for extension/research when there are no percent indicators -->
+        <canvas id="percentChart" aria-label="Percentage chart" role="img" style="display:block; width:100%; height:260px;"></canvas>
+
+        <!-- Whole-number chart (shows raw counts). Hidden when no whole-number indicators) -->
+        <canvas id="wholeChart" aria-label="Whole number chart" role="img" style="display:block; width:100%; height:260px; margin-top:24px;"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" style="display:none;" class="overlay">
+    <div class="bg-white p-6 rounded-xl shadow-lg text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+      <p class="text-lg font-semibold">Generating PDF...</p>
+      <p class="text-sm text-gray-600">Please wait, this may take a moment.</p>
+    </div>
+  </div>
+
+  <!-- Manage Data Overlay -->
+  <div id="manageOverlay" style="display:none;" class="overlay">
+    <div class="bg-white rounded-xl p-6 w-full max-w-2xl shadow-lg">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-semibold">Manage Dataset — <span id="manageDatasetName"></span></h3>
+        <div class="flex gap-2">
+          <button id="seedDataset" class="bg-emerald-600 text-white px-3 py-1 rounded" aria-label="Seed sample data">Seed Sample</button>
+          <button id="closeManage" class="bg-gray-300 px-3 py-1 rounded" aria-label="Close manage overlay">Close</button>
+        </div>
+      </div>
+
+      <!-- Entry form -->
+      <form id="entryForm" class="grid grid-cols-2 gap-3 mb-4">
+        <input type="hidden" id="entryId" />
+        <label class="col-span-2">
+          Indicator (choose or 'Other')
+          <div class="flex gap-2">
+            <select id="indicatorSelect" class="flex-1 border rounded p-2">
+              <!-- options populated by JS to keep consistent -->
+            </select>
+            <input id="indicatorOther" class="flex-1 border rounded p-2" placeholder="Type custom indicator (shows when 'Other' selected)" style="display:none;" />
+          </div>
+        </label>
+
+        <label>
+          Quarter
+          <select id="quarterInput" class="w-full border rounded p-2">
+            <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+          </select>
+        </label>
+
+        <label id="targetLabel">
+          Target (num)
+          <input id="targetInput" type="number" min="0" class="w-full border rounded p-2" />
+        </label>
+
+        <label id="targetDenomLabel">
+          Target Denominator
+          <input id="targetDenomInput" type="number" min="0" class="w-full border rounded p-2" />
+        </label>
+
+        <label id="accompLabel">
+          Accomplishment (num)
+          <input id="accompInput" type="number" min="0" class="w-full border rounded p-2" />
+        </label>
+
+        <label id="accompDenomLabel">
+          Accomplishment Denominator
+          <input id="accompDenomInput" type="number" min="0" class="w-full border rounded p-2" />
+        </label>
+
+        <label class="col-span-2">
+          Remarks
+          <input id="remarksInput" class="w-full border rounded p-2" placeholder="Add remarks here (optional)" />
+        </label>
+
+        <div class="col-span-2 flex gap-3 justify-end">
+          <button type="button" id="saveEntryBtn" class="bg-indigo-600 text-white px-4 py-2 rounded">Save</button>
+        </div>
+      </form>
+
+      <!-- Entries list -->
+      <div class="overflow-auto max-h-60">
+        <table class="w-full text-sm text-left">
+          <thead class="text-xs text-slate-600">
+            <tr><th>id</th><th>Indicator</th><th>Q</th><th>Target</th><th>Accomp</th><th>Remarks</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="entriesList"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script  src="script.plugin_fixed.js"></script>
+</body>
+</html>
