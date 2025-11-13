@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDO Data Entry</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.7s ease-in-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-100 via-slate-100 to-slate-200 min-h-screen flex items-center justify-center p-6">
+  <div class="glass fade-in p-8 rounded-2xl shadow-2xl w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <!-- Form Section -->
+    <div>
+      <h1 class="text-3xl font-extrabold text-center mb-6 text-indigo-700 drop-shadow-md">📋 PDO Data Entry</h1>
+
+      <!-- Category -->
+      <div class="mb-4">
+        <label class="block text-gray-700 font-semibold mb-1">📂 Category</label>
+        <select id="category" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-indigo-300 transition" required>
+          <option value="">-- Select Category --</option>
+          <option value="Higher Education">Higher Education</option>
+          <option value="Research Program">Research Program</option>
+          <option value="Extension Services">Extension Services</option>
+        </select>
+      </div>
+
+      <form id="dataForm" class="space-y-5">
+        <!-- Indicator -->
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1">📌 Indicator</label>
+          <select id="indicator" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-indigo-300 transition" required>
+            <option value="">-- Select Indicator --</option>
+          </select>
+        </div>
+
+        <!-- Quarter -->
+        <div>
+          <label class="block text-gray-700 font-semibold mb-1">🗓 Quarter</label>
+          <select id="quarter" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-indigo-300 transition" required>
+            <option value="">-- Select Quarter --</option>
+            <option value="Q1">1st Quarter</option>
+            <option value="Q2">2nd Quarter</option>
+            <option value="Q3">3rd Quarter</option>
+            <option value="Q4">4th Quarter</option>
+          </select>
+        </div>
+
+        <!-- Target & Denominator -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-700 font-semibold mb-1">🎯 Target (Numerator)</label>
+            <input type="number" id="target" placeholder="e.g., 784" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-teal-300 transition" step="1" min="0">
+          </div>
+          <div>
+            <label class="block text-gray-700 font-semibold mb-1">🔢 Target (Denominator)</label>
+            <input type="number" id="targetDenom" placeholder="e.g., 980" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-teal-300 transition" step="1" min="0">
+          </div>
+        </div>
+
+        <!-- Accomplishment & Denominator -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-700 font-semibold mb-1">✅ Accomplishment (Numerator)</label>
+            <input type="number" id="accomp" placeholder="e.g., 850" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-green-300 transition" step="1" min="0">
+          </div>
+          <div>
+            <label class="block text-gray-700 font-semibold mb-1">🔢 Accomplishment (Denominator)</label>
+            <input type="number" id="accompDenom" placeholder="e.g., 1020" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-green-300 transition" step="1" min="0">
+          </div>
+        </div>
+
+        <!-- Whole Numbers -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-700 font-semibold mb-1">🔹 Target (Number)</label>
+            <input type="number" id="targetWhole" placeholder="e.g., 500" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-blue-300 transition" step="1" min="0">
+          </div>
+          <div>
+            <label class="block text-gray-700 font-semibold mb-1">🔸 Accomplishment (Number)</label>
+            <input type="number" id="accompWhole" placeholder="e.g., 450" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-blue-300 transition" step="1" min="0">
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-between gap-4 pt-2">
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-semibold shadow-md transform hover:scale-105 transition">
+            ➕ Save Entry
+          </button>
+          <a href="updatetest.html" class="w-full text-center bg-green-600 hover:bg-green-700 text-white p-3 rounded-xl font-semibold shadow-md transform hover:scale-105 transition">
+            📊 View Report
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="glass p-6 rounded-2xl shadow-inner fade-in">
+      <h2 class="text-2xl font-bold mb-4 text-slate-700">🔎 Live Preview</h2>
+      <div id="previewBox" class="space-y-3 text-gray-700">
+        <p><strong>Category:</strong> <span id="prevCategory">-</span></p>
+        <p><strong>Indicator:</strong> <span id="prevIndicator">-</span></p>
+        <p><strong>Quarter:</strong> <span id="prevQuarter">-</span></p>
+        <p><strong>Target:</strong> <span id="prevTarget">-</span></p>
+        <p><strong>Accomplishment:</strong> <span id="prevAccomp">-</span></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const INDICATORS_BY_CATEGORY = {
+      "Higher Education": ["Licensure", "Employability", "CHED-RDC", "Accreditation"],
+      "Research Program": ["OC1-Research Utilization", "OP1-Complete Research", "OP2-Research Publish"],
+      "Extension Services": ["OC1-Number of Active Partnership", "OP1-Number of Trainees", "OP2-Number of Extension Programs", "OP3-Satisfactory Rating"]
+    };
+
+    const categoryEl = document.getElementById("category");
+    const indicatorEl = document.getElementById("indicator");
+    const form = document.getElementById("dataForm");
+
+    // Preview elements
+    const prevCategory = document.getElementById("prevCategory");
+    const prevIndicator = document.getElementById("prevIndicator");
+    const prevQuarter = document.getElementById("prevQuarter");
+    const prevTarget = document.getElementById("prevTarget");
+    const prevAccomp = document.getElementById("prevAccomp");
+
+    function updatePreview() {
+      const category = categoryEl.value || "-";
+      const indicator = indicatorEl.value || "-";
+      const quarter = document.getElementById("quarter").value || "-";
+
+      const t = document.getElementById("target").value;
+      const td = document.getElementById("targetDenom").value;
+      const a = document.getElementById("accomp").value;
+      const ad = document.getElementById("accompDenom").value;
+      const tw = document.getElementById("targetWhole").value;
+      const aw = document.getElementById("accompWhole").value;
+
+      let targetText = "-";
+      if (t && td) targetText = `${t}/${td}`;
+      if (tw) targetText = tw;
+
+      let accompText = "-";
+      if (a && ad) accompText = `${a}/${ad}`;
+      if (aw) accompText = aw;
+
+      prevCategory.textContent = category;
+      prevIndicator.textContent = indicator;
+      prevQuarter.textContent = quarter;
+      prevTarget.textContent = targetText;
+      prevAccomp.textContent = accompText;
+    }
+
+    // Update preview on every input change
+    document.querySelectorAll("input, select").forEach(el => {
+      el.addEventListener("input", updatePreview);
+      el.addEventListener("change", updatePreview);
+    });
+
+    // Populate indicators based on selected category
+    categoryEl.addEventListener("change", () => {
+      const category = categoryEl.value;
+      indicatorEl.innerHTML = '<option value="">-- Select Indicator --</option>';
+      if (category && INDICATORS_BY_CATEGORY[category]) {
+        INDICATORS_BY_CATEGORY[category].forEach(ind => {
+          const opt = document.createElement("option");
+          opt.value = ind;
+          opt.textContent = ind;
+          indicatorEl.appendChild(opt);
+        });
+      }
+    });
+
+    // Save entry
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      const category = categoryEl.value;
+      const indicator = indicatorEl.value;
+      const quarter = document.getElementById("quarter").value;
+
+      const target = Number(document.getElementById("target").value) || 0;
+      const targetDenom = Number(document.getElementById("targetDenom").value) || 0;
+      const accomp = Number(document.getElementById("accomp").value) || 0;
+      const accompDenom = Number(document.getElementById("accompDenom").value) || 0;
+      const targetWhole = Number(document.getElementById("targetWhole").value) || 0;
+      const accompWhole = Number(document.getElementById("accompWhole").value) || 0;
+
+      if (!category || !indicator) {
+        alert("⚠ Please select category and indicator.");
+        return;
+      }
+
+      const usingFraction = target > 0 && targetDenom > 0 && accomp >= 0 && accompDenom > 0;
+      const usingWhole = targetWhole > 0 || accompWhole > 0;
+
+      if (!usingFraction && !usingWhole) {
+        alert("⚠ Please enter either numerator/denominator or whole numbers.");
+        return;
+      }
+
+      let data = JSON.parse(localStorage.getItem("chedData")) || [];
+      data.push({ category, indicator, quarter, target, targetDenom, accomp, accompDenom, targetWhole, accompWhole });
+      localStorage.setItem("chedData", JSON.stringify(data));
+
+      alert("✅ Entry saved! You can now view the report.");
+      form.reset();
+      indicatorEl.innerHTML = '<option value="">-- Select Indicator --</option>';
+      updatePreview();
+    });
+
+    // Initialize preview
+    updatePreview();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CHED Report — Performance Dashboard (fixed fraction handling + flexible scaling)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Use the same Chart.js and datalabels you already had -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+canvas { max-height: 420px; }
+.small { font-size: 0.8rem; display:block; color:#475569; }
+.fade-in { animation: fadeIn 0.7s ease-in-out; }
+@keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+td[contenteditable="true"] { outline: none; min-width: 160px; text-align:left; }
+body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+th, td { white-space: normal !important; word-break: break-word; max-width: 180px; }
+.remarks-cell { max-width: 220px; overflow-wrap: break-word; }
+.table-scroll { overflow-x: auto; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 min-h-screen p-6 text-slate-800">
+<main class="max-w-6xl mx-auto space-y-6">
+
+<h1 class="text-4xl font-extrabold text-center mb-4 text-indigo-700 drop-shadow-lg"> PERFORMANCE REVIEW REPORT</h1>
+
+<div class="flex flex-wrap gap-3 justify-center mb-4">
+    <button id="backBtn" class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-2xl shadow-md transition">⬅ Back</button>
+    <button id="downloadPDF" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-2xl shadow-md transition">📥 Download PDF</button>
+    <button id="clearData" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-2xl shadow-md transition">🗑 Clear All</button>
+    <div id="status" class="text-sm text-slate-600 ml-2 self-center">No data</div>
+</div>
+
+<div class="flex flex-col items-center mb-4 fade-in">
+    <label for="categorySelector" class="text-lg font-semibold mb-2 flex items-center text-slate-700">Select Category:</label>
+    <select id="categorySelector" class="px-6 py-3 text-white bg-teal-600 rounded-xl shadow-md font-semibold text-base hover:bg-teal-700 transition focus:outline-none focus:ring-4 focus:ring-teal-400">
+    <option value="all">All Categories</option>
+    <option value="Higher Education">Higher Education</option>
+    <option value="Research Program">Research Program</option>
+    <option value="Extension Services">Extension Services</option>
+    </select>
+</div>
+
+<section id="reportContent" class="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-xl fade-in">
+    <h2 class="text-xl font-semibold mb-3 text-slate-700">Data Report</h2>
+    <div class="table-scroll">
+    <table class="w-full border text-sm text-center rounded-xl overflow-hidden" id="mainReportTable" style="table-layout:fixed;">
+        <thead class="bg-indigo-100 text-slate-700">
+        <tr>
+            <th class="p-2 border">Indicator</th>
+            <th class="p-2 border">Q1</th>
+            <th class="p-2 border">Q2</th>
+            <th class="p-2 border">Q3</th>
+            <th class="p-2 border">Q4</th>
+            <th class="p-2 border">Total</th>
+            <th class="p-2 border">QUARTELY</th>
+            <th class="p-2 border">Remarks</th>
+        </tr>
+        </thead>
+        <tbody id="reportTable"></tbody>
+    </table>
+    </div>
+</section>
+
+<section class="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-xl fade-in">
+    <div class="flex flex-col items-center mb-4">
+    <label for="chartSelector" class="text-lg font-semibold mb-2 flex items-center text-slate-700">Select Report View:</label>
+    <!-- IMPORTANT: midyear option added here (value = 'midyear') -->
+    <select id="chartSelector" class="px-6 py-3 text-white bg-indigo-600 rounded-xl shadow-md font-semibold text-base hover:bg-indigo-700 transition focus:outline-none focus:ring-4 focus:ring-indigo-400">
+        <option value="overall">Annual</option>
+        <option value="midyear">Midyear (Q1 + Q2)</option>
+        <option value="Q1">Quarter 1</option>
+        <option value="Q2">Quarter 2</option>
+        <option value="Q3">Quarter 3</option>
+        <option value="Q4">Quarter 4</option>
+    </select>
+    </div>
+    <div style="height:420px;">
+    <canvas id="dynamicChart" aria-label="Performance chart" role="img"></canvas>
+    </div>
+</section>
+
+<section id="midyearSection" class="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-xl fade-in">
+    <div class="flex items-center justify-center mb-4">
+    <h3 class="text-lg font-semibold text-slate-700">Midyear (Q1 + Q2)</h3>
+    </div>
+    <div style="height:420px;">
+    <canvas id="midyearChart" aria-label="Midyear chart" role="img"></canvas>
+    </div>
+</section>
+
+<!-- hidden container used for PDF offscreen canvases -->
+<div id="offscreen" style="position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden;"></div>
+
+</main>
+
+<script>
+/* ===============================
+   Main script — fixed & flexible
+   =============================== */
+Chart.register(ChartDataLabels);
+
+// === color constants ===
+const COLOR_TARGET = "#00008B"; // dark blue
+const COLOR_GOOD = "#00B300";   // green when accomplishment >= target
+const COLOR_BAD = "#FF0000";    // bright red when accomplishment < target
+const COLOR_NEUTRAL = "#94a3b8"; // fallback gray
+
+const STORAGE_KEY = 'chedData';
+const REMARKS_KEY = 'chedRemarks';
+const INDICATORS_BY_CATEGORY = {
+  "Higher Education": ["Licensure", "Employability", "CHED-RDC", "Accreditation"],
+  "Research Program": ["OC1-Research Utilization","OP1-Complete Research","OP2-Research Publish"],
+  "Extension Services": ["OC1-Number of Active Partnership","OP1-Number of Trainees","OP2-Number of Extension Programs","OP3-Satisfactory Rating"]
+};
+const HIGHER_ED_PERCENTAGE_INDICATORS = ["Licensure", "Employability", "CHED-RDC", "Accreditation"];
+const DUAL_AXIS_CATEGORIES = ["Research Program", "Extension Services"]; // dual-axis only for these
+const DEFAULT_SETTINGS = { decimals: 1 };
+
+// For Extension Services: which indicators are percentages (explicit)
+const EXTENSION_PERCENT_INDICATORS = ["OP3-Satisfactory Rating"];
+
+let entries = [];
+let remarksData = {};
+let matrix = {};
+let settings = DEFAULT_SETTINGS;
+
+let dynamicChart = null;
+let midyearChart = null;
+
+const reportTable = document.getElementById('reportTable');
+const statusEl = document.getElementById('status');
+const chartSelector = document.getElementById('chartSelector');
+const categorySelector = document.getElementById('categorySelector');
+
+let selectedCategory = localStorage.getItem("lastCategory") || 'all';
+categorySelector.value = selectedCategory;
+
+const safeParse = s => { try { return JSON.parse(s); } catch(e) { return []; } };
+const showStatus = t => { statusEl.innerHTML = t; };
+
+/* -------------------------
+ Storage helpers
+------------------------- */
+function loadEntries() { entries = safeParse(localStorage.getItem(STORAGE_KEY)) || []; remarksData = safeParse(localStorage.getItem(REMARKS_KEY) || "{}") || {}; return entries; }
+function saveEntries() { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+function saveRemarks() { localStorage.setItem(REMARKS_KEY, JSON.stringify(remarksData)); }
+
+function escapeHtml(str){ if(str === null || str === undefined) return ''; return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+/* -------------------------
+ Parsing helpers
+------------------------- */
+function parseFractionToPercent(v){
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    if (v.includes('/')) {
+      const parts = v.split('/');
+      if (parts.length >= 2) {
+        const n = Number(parts[0].trim()) || 0;
+        const d = Number(parts[1].trim()) || 0;
+        return d > 0 ? (n / d * 100) : null;
+      }
+    }
+    if (v.includes('%')) {
+      const n = parseFloat(v.replace('%','').trim());
+      return isNaN(n) ? null : n;
+    }
+    const n = Number(v.trim());
+    return isNaN(n) ? null : n;
+  }
+  return null;
+}
+
+function toNumericNullable(v){
+  if(v === null || v === undefined || v === '') return null;
+  if(typeof v === 'number') return v;
+  if(typeof v === 'string'){
+    if(v.includes('/')) return parseFractionToPercent(v);
+    if(v.includes('%')) return parseFloat(v.replace('%','')) || null;
+    const n = Number(v); return isNaN(n) ? null : n;
+  }
+  const n = Number(v); return isNaN(n) ? null : n;
+}
+
+/* -------------------------
+ Totals & formatting
+------------------------- */
+function computeTotalNumericForIndicator(indicator, values){
+  const filtered = (values || []).filter(v => v !== null && v !== undefined && v !== "");
+  if(filtered.length === 0) return null;
+
+  const hasFraction = filtered.some(v => typeof v === 'string' && v.includes('/'));
+  const hasPercentSign = filtered.some(v => typeof v === 'string' && v.includes('%'));
+
+  // default percent classification
+  let isPercentageIndicator = HIGHER_ED_PERCENTAGE_INDICATORS.includes(indicator) || hasFraction || hasPercentSign;
+
+  // For Extension Services, only treat designated indicators as percent
+  if (selectedCategory === "Extension Services") {
+    isPercentageIndicator = EXTENSION_PERCENT_INDICATORS.includes(indicator);
+  }
+
+  if (isPercentageIndicator) {
+    const percs = filtered.map(v=>{
+      if(typeof v === 'string' && v.includes('/')) return parseFractionToPercent(v);
+      if(typeof v === 'string' && v.includes('%')) return parseFloat(v.replace('%','')) || null;
+      const nn = Number(v); return isNaN(nn) ? null : nn;
+    }).filter(x => x !== null);
+    if(!percs.length) return null;
+    const avg = percs.reduce((a,b)=>a+b,0) / percs.length;
+    return avg; // numeric percent (0-100)
+  } else {
+    const nums = filtered.map(v=>{
+      if(typeof v === 'string' && v.includes('/')) {
+        // If user entered fraction for a numeric indicator, convert fraction to percent and return the percent value
+        const p = parseFractionToPercent(v);
+        return p !== null ? p : null;
+      }
+      if(typeof v === 'string' && v.includes('%')) return parseFloat(v.replace('%','')) || null;
+      const n = Number(v); return isNaN(n) ? null : n;
+    }).filter(n => n !== null);
+    if(!nums.length) return null;
+    // numeric indicator -> sum (not average)
+    return nums.reduce((a,b)=>a+b,0);
+  }
+}
+
+function computeTotalFormatted(indicator, values){
+  const num = computeTotalNumericForIndicator(indicator, values);
+  if(num === null || num === undefined) return "-";
+  // determine percent for formatted string (consistent with computeTotalNumericForIndicator)
+  let isPercent = HIGHER_ED_PERCENTAGE_INDICATORS.includes(indicator) || (values||[]).some(v=> typeof v === 'string' && (v.includes('%') || v.includes('/')));
+  if (selectedCategory === "Extension Services") isPercent = EXTENSION_PERCENT_INDICATORS.includes(indicator);
+  if(isPercent) return Number(num.toFixed(settings.decimals)) + "%";
+  return Number.isInteger(num) ? num : Number(num.toFixed(settings.decimals));
+}
+
+function formatValueForTable(val){
+  if(val === null || val === undefined || val === '') return "-";
+  if(typeof val === 'string' && val.includes('/')){
+    const [nS,dS] = val.split('/');
+    const n = Number(nS)||0, d = Number(dS)||0;
+    if(d>0) return `${(n/d*100).toFixed(settings.decimals)}%<br><span class="small">(${n}/${d})</span>`;
+    return "-";
+  }
+  if(typeof val === 'string' && val.includes('%')) return escapeHtml(val);
+  return escapeHtml(String(val));
+}
+
+/* -------------------------
+ Build matrix & render table
+------------------------- */
+function buildMatrixForCategory(cat) {
+  const m = {};
+  const base = Array.from(new Set(Object.values(INDICATORS_BY_CATEGORY).flat().concat(entries.map(e=>e.indicator || '')))).filter(Boolean);
+  const indicators = cat === "all" ? base : (INDICATORS_BY_CATEGORY[cat] ? INDICATORS_BY_CATEGORY[cat].slice() : []);
+
+  indicators.forEach(ind => { m[ind] = {Q1:{}, Q2:{}, Q3:{}, Q4:{}, remark: (remarksData && remarksData[ind]) ? remarksData[ind] : ''}; });
+
+  entries.filter(e => cat === 'all' ? true : e.category === cat).forEach(e => {
+    if (!m[e.indicator]) m[e.indicator] = {Q1:{}, Q2:{}, Q3:{}, Q4:{}, remark: (remarksData && remarksData[e.indicator]) ? remarksData[e.indicator] : ''};
+    m[e.indicator][e.quarter] = {
+      target: (e.targetWhole && e.targetWhole > 0) ? Number(e.targetWhole) : (e.target !== undefined ? (String(e.target) + (e.targetDenom ? "/" + String(e.targetDenom) : "")) : null),
+      accomp: (e.accompWhole && e.accompWhole > 0) ? Number(e.accompWhole) : (e.accomp !== undefined ? (String(e.accomp) + (e.accompDenom ? "/" + String(e.accompDenom) : "")) : null)
+    };
+    if(remarksData && remarksData[e.indicator]) m[e.indicator].remark = remarksData[e.indicator];
+  });
+
+  return m;
+}
+
+function buildMatrix(){ matrix = buildMatrixForCategory(selectedCategory); return matrix; }
+
+function renderReport() {
+  reportTable.innerHTML = '';
+  const inds = Object.keys(matrix);
+
+  inds.forEach(ind => {
+    const t = matrix[ind];
+    const valuesTargetRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.target).filter(v=>v !== undefined);
+    const valuesAccompRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.accomp).filter(v=>v !== undefined);
+
+    const totalTarget = computeTotalFormatted(ind, valuesTargetRaw);
+    const totalAccomp = computeTotalFormatted(ind, valuesAccompRaw);
+
+    // Midyear (Q1 + Q2) totals for display in the "Overall" column — note: this does not modify storage.
+    const totalTargetMid = computeTotalFormatted(ind, [t.Q1?.target, t.Q2?.target]);
+    const totalAccompMid = computeTotalFormatted(ind, [t.Q1?.accomp, t.Q2?.accomp]);
+
+    const header = document.createElement('tr');
+    header.className = 'bg-indigo-50 font-semibold';
+    header.innerHTML = `<td class="p-2" colspan="8" style="word-break:break-word;">${escapeHtml(ind)}</td>`;
+    reportTable.appendChild(header);
+
+    const trT = document.createElement('tr');
+    const remarkContent = t.remark ? escapeHtml(t.remark) : 'Add remark...';
+    trT.innerHTML = `
+      <td class="border p-2 text-left" style="max-width:180px;">Target</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q1?.target)}</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q2?.target)}</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q3?.target)}</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q4?.target)}</td>
+      <td class="border p-2" style="max-width:120px;">${totalTarget}</td>
+      <td class="border p-2" style="max-width:120px;">${totalTargetMid}</td>
+      <td class="border p-2 small text-slate-500 remarks-cell" rowspan="2" contenteditable="true" data-indicator="${escapeHtml(ind)}" style="max-width:220px;min-width:180px;">${remarkContent}</td>
+    `;
+    reportTable.appendChild(trT);
+
+    const trA = document.createElement('tr');
+    trA.innerHTML = `
+      <td class="border p-2 text-left" style="max-width:180px;">Accomplishment</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q1?.accomp)}</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q2?.accomp)}</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q3?.accomp)}</td>
+      <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q4?.accomp)}</td>
+      <td class="border p-2" style="max-width:120px;">${totalAccomp}</td>
+      <td class="border p-2" style="max-width:120px;">${totalAccompMid}</td>
+    `;
+    reportTable.appendChild(trA);
+  });
+
+  document.querySelectorAll('.remarks-cell').forEach(cell=>{
+    const clone = cell.cloneNode(true);
+    cell.parentNode.replaceChild(clone, cell);
+  });
+
+  document.querySelectorAll('.remarks-cell').forEach(cell=>{
+    cell.addEventListener('blur', e=>{
+      const ind = e.target.dataset.indicator;
+      const text = e.target.innerText.trim();
+      remarksData[ind] = (text === '' || text === 'Add remark...') ? '' : text;
+      saveRemarks();
+      if(matrix[ind]) matrix[ind].remark = remarksData[ind];
+    });
+    cell.addEventListener('keydown', e=>{
+      if(e.key === 'Enter'){ e.preventDefault(); cell.blur(); }
+    });
+  });
+
+  showStatus(entries.length ? `${entries.length} row(s)` : 'No data');
+}
+
+/* -------------------------
+ Build chart data (fixed + flexible)
+ Returns labels, percentTarget/Accomp, valueTarget/Accomp, background colors
+------------------------- */
+function buildChartDataFromMatrix(matrixLocal, view, category = selectedCategory){
+  const labels = Object.keys(matrixLocal);
+  const percentTarget = [], percentAccomp = [], percentBg = [];
+  const valueTarget = [], valueAccomp = [], valueBg = [];
+
+  const isDualCategory = DUAL_AXIS_CATEGORIES.includes(category);
+
+  labels.forEach(ind => {
+    const t = matrixLocal[ind] || {};
+    let tValRaw, aValRaw;
+
+    if(view === 'overall'){
+      tValRaw = ['Q1','Q2','Q3','Q4'].map(q => t[q]?.target);
+      aValRaw = ['Q1','Q2','Q3','Q4'].map(q => t[q]?.accomp);
+    } else if (view === 'midyear') {
+      // <-- midyear handled here: only Q1 + Q2
+      tValRaw = [t.Q1?.target, t.Q2?.target];
+      aValRaw = [t.Q1?.accomp, t.Q2?.accomp];
+    } else { // single quarter
+      tValRaw = [t[view]?.target];
+      aValRaw = [t[view]?.accomp];
+    }
+
+    // compute numeric totals or averages appropriately
+    const tNum = computeTotalNumericForIndicator(ind, tValRaw);
+    const aNum = computeTotalNumericForIndicator(ind, aValRaw);
+
+    // detect raw inputs that look like fraction or percent
+    const rawHasFractionOrPercent = (tValRaw.concat(aValRaw)).some(v => typeof v === 'string' && (v.includes('/') || v.includes('%')));
+
+    // default percent classification
+    let isPercentIndicator = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || rawHasFractionOrPercent;
+
+    // special-case: For Extension Services treat only the explicit list as percent
+    if (category === "Extension Services") {
+      isPercentIndicator = EXTENSION_PERCENT_INDICATORS.includes(ind);
+    }
+
+    if(isPercentIndicator){
+      // percentage indicators (includes fraction inputs) -> percent datasets
+      percentTarget.push(tNum !== null ? Number(tNum.toFixed(settings.decimals)) : null);
+      percentAccomp.push(aNum !== null ? Number(aNum.toFixed(settings.decimals)) : null);
+      // new color logic: green if accom >= target, red if less, neutral gray if any missing
+      percentBg.push((aNum !== null && tNum !== null) ? (aNum >= tNum ? COLOR_GOOD : COLOR_BAD) : COLOR_NEUTRAL);
+
+      // no numeric value dataset
+      valueTarget.push(null);
+      valueAccomp.push(null);
+      valueBg.push(null);
+    } else {
+      // numeric indicators -> value datasets
+      valueTarget.push(tNum !== null ? tNum : null);
+      valueAccomp.push(aNum !== null ? aNum : null);
+      valueBg.push((aNum !== null && tNum !== null) ? (aNum >= tNum ? COLOR_GOOD : COLOR_BAD) : COLOR_NEUTRAL);
+
+      if(isDualCategory){
+        // For dual categories produce % for accomplishment (a/t) so user sees percent below bars
+        percentTarget.push(null);
+        percentAccomp.push((tNum !== null && tNum !== 0 && aNum !== null) ? Number(((aNum / tNum) * 100).toFixed(settings.decimals)) : null);
+        percentBg.push((tNum !== null && aNum !== null) ? ((aNum >= tNum) ? COLOR_GOOD : COLOR_BAD) : COLOR_NEUTRAL);
+      } else {
+        percentTarget.push(null);
+        percentAccomp.push(null);
+        percentBg.push(null);
+      }
+    }
+  });
+
+  return {
+    labels,
+    percentTarget, percentAccomp, percentBg,
+    valueTarget, valueAccomp, valueBg
+  };
+}
+
+/* -------------------------
+ Utility: compute nice max with padding
+------------------------- */
+function computeYAxisMax(values, isPercent=false){
+  const numeric = (values || []).filter(v => v !== null && v !== undefined).map(Number);
+  if(!numeric.length) return isPercent ? 100 : 1;
+  const max = Math.max(...numeric);
+  if(isPercent){
+    return Math.min(100, Math.ceil(max * 1.05)); // percent max shouldn't exceed 100
+  } else {
+    // add 10% headroom but ensure non-zero
+    const padded = Math.ceil(max * 1.1);
+    return padded > 0 ? padded : Math.ceil(max) + 1;
+  }
+}
+
+/* -------------------------
+ Render dynamic (annual/quarter) chart
+------------------------- */
+function renderDynamicChart(view='overall'){
+  if(dynamicChart){ dynamicChart.destroy(); dynamicChart = null; }
+  const canvas = document.getElementById('dynamicChart');
+  const ctx = canvas.getContext('2d');
+
+  const data = buildChartDataFromMatrix(matrix, view, selectedCategory);
+  const labels = data.labels;
+
+  const isDual = DUAL_AXIS_CATEGORIES.includes(selectedCategory);
+
+  // compute y-axis maxes
+  const yValueMax = computeYAxisMax((data.valueTarget || []).concat(data.valueAccomp || []), false);
+  const yPercentMax = computeYAxisMax((data.percentTarget || []).concat(data.percentAccomp || []), true);
+
+  const datasets = [];
+
+  if (isDual) {
+    if (data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null)) {
+      datasets.push({
+        label: 'Value Target',
+        data: data.valueTarget,
+        backgroundColor: data.valueTarget.map(_=>COLOR_TARGET),
+        borderRadius: 8,
+        barPercentage: 0.6,
+        categoryPercentage: 0.7,
+        yAxisID: 'y-value'
+      });
+      datasets.push({
+        label: 'Value Accomplishment',
+        data: data.valueAccomp,
+        backgroundColor: data.valueBg,
+        borderRadius: 8,
+        barPercentage: 0.6,
+        categoryPercentage: 0.7,
+        yAxisID: 'y-value'
+      });
+    }
+    if (data.percentTarget.some(v=>v!==null) || data.percentAccomp.some(v=>v!==null)) {
+      datasets.push({
+        label: 'Percentage Target',
+        data: data.percentTarget,
+        backgroundColor: data.percentTarget.map(_=>COLOR_TARGET),
+        borderRadius: 8,
+        barPercentage: 0.6,
+        categoryPercentage: 0.7,
+        yAxisID: 'y-percent'
+      });
+      datasets.push({
+        label: 'Percentage Accomplishment',
+        data: data.percentAccomp,
+        backgroundColor: data.percentBg,
+        borderRadius: 8,
+        barPercentage: 0.6,
+        categoryPercentage: 0.7,
+        yAxisID: 'y-percent'
+      });
+    }
+  } else {
+    // Not a dual category: show percent series only
+    datasets.push({
+      label: 'Target',
+      data: data.percentTarget,
+      backgroundColor: data.percentTarget.map(_=>COLOR_TARGET),
+      borderRadius: 8,
+      barPercentage: 0.6,
+      categoryPercentage: 0.7,
+      yAxisID: 'y-percent'
+    });
+    datasets.push({
+      label: 'Accomplishment',
+      data: data.percentAccomp,
+      backgroundColor: data.percentBg,
+      borderRadius: 8,
+      barPercentage: 0.6,
+      categoryPercentage: 0.7,
+      yAxisID: 'y-percent'
+    });
+  }
+
+  const scales = { 
+    x: { 
+      grid: { display:false },
+      ticks: {
+        font: { size: 11 },
+        autoSkip: false,
+        maxRotation: 0,
+        minRotation: 0,
+        callback: function(value, index, values) {
+          let label = labels[index] || '';
+          return label.length > 18 ? label.slice(0,18) + '…' : label;
+        }
+      }
+    }
+  };
+  if (isDual) {
+    scales['y-value'] = {
+      type: 'linear',
+      position: 'left',
+      beginAtZero: true,
+      min: 0,
+      max: yValueMax,
+      title: { display: true, text: 'Value' },
+      grid: { color: 'rgba(148,163,184,0.08)' },
+      ticks: { font: { size: 11 } }
+    };
+    scales['y-percent'] = {
+      type: 'linear',
+      position: 'right',
+      beginAtZero: true,
+      min: 0,
+      max: Math.max(100, yPercentMax),
+      title: { display: true, text: 'Percentage (%)' },
+      grid: { drawOnChartArea: false },
+      ticks: { font: { size: 11 } }
+    };
+  } else {
+    scales['y-percent'] = {
+      type: 'linear',
+      position: 'left',
+      beginAtZero: true,
+      min: 0,
+      max: Math.max(100, yPercentMax),
+      title: { display: true, text: 'Percentage (%)' },
+      grid: { color: 'rgba(148,163,184,0.3)' },
+      ticks: { font: { size: 11 } }
+    };
+  }
+
+  dynamicChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 12 } } },
+        tooltip: { enabled: true, callbacks: {
+          title: (items) => items[0].label,
+          label: (context) => {
+            let label = context.dataset.label || '';
+            let value = context.parsed.y;
+            if (context.dataset.yAxisID === 'y-percent') return `${label}: ${value}%`;
+            return `${label}: ${value}`;
+          }
+        }},
+        datalabels: {
+          display: true,
+          color: '#111',
+          font: { weight: 'bold', size: 10 },
+          anchor: 'end',
+          align: 'top',
+          clamp: true,
+          padding: { top: 2, bottom: 2 },
+          labels: {
+            inside: {
+              anchor: 'center',
+              align: 'center',
+              font: { size: 10 },
+              formatter: (value, context) => {
+                if (value === null || value === undefined) return null;
+                const dsLabel = context.dataset.label || '';
+                const idx = context.dataIndex;
+                if (context.dataset.yAxisID === 'y-percent') {
+                  // show percent
+                  if (dsLabel.toLowerCase().includes('target')) {
+                    return (data.percentTarget[idx] !== null && data.percentTarget[idx] !== undefined) ? `${Number(data.percentTarget[idx]).toFixed(settings.decimals)}%` : null;
+                  }
+                  if (dsLabel.toLowerCase().includes('accomplish')) {
+                    return (data.percentAccomp[idx] !== null && data.percentAccomp[idx] !== undefined) ? `${Number(data.percentAccomp[idx]).toFixed(settings.decimals)}%` : null;
+                  }
+                }
+                if (context.dataset.yAxisID === 'y-value') {
+                  // show raw numbers
+                  if (dsLabel.toLowerCase().includes('target')) {
+                    const v = data.valueTarget[idx];
+                    return (v !== null && v !== undefined) ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
+                  }
+                  if (dsLabel.toLowerCase().includes('accomplish')) {
+                    const v = data.valueAccomp[idx];
+                    return (v !== null && v !== undefined) ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
+                  }
+                }
+                return null;
+              }
+            },
+            bottom: {
+              anchor: 'end',
+              align: 'end',
+              offset: -6,
+              font: { size: 9 },
+              formatter: (value, context) => {
+                if (value === null || value === undefined) return null;
+                // show accomplishment percent below value bars for dual categories
+                const dsLabel = context.dataset.label || '';
+                const idx = context.dataIndex;
+                if (dsLabel.toLowerCase().includes('accomplish') && context.dataset.yAxisID === 'y-value') {
+                  const pct = data.percentAccomp[idx];
+                  return (pct !== null && pct !== undefined) ? `${Number(pct).toFixed(settings.decimals)}%` : null;
+                }
+                return null;
+              }
+            }
+          }
+        }
+      },
+      scales
+    }
+  });
+}
+
+/* -------------------------
+ Midyear chart (Q1+Q2)
+------------------------- */
+function renderMidyearChart(){
+  if(midyearChart){ midyearChart.destroy(); midyearChart = null; }
+  const canvas = document.getElementById('midyearChart');
+  const ctx = canvas.getContext('2d');
+
+  const data = buildChartDataFromMatrix(matrix, 'midyear', selectedCategory);
+  const labels = data.labels;
+  const isDual = DUAL_AXIS_CATEGORIES.includes(selectedCategory);
+
+  const yValueMax = computeYAxisMax((data.valueTarget || []).concat(data.valueAccomp || []), false);
+  const yPercentMax = computeYAxisMax((data.percentTarget || []).concat(data.percentAccomp || []), true);
+
+  const datasets = [];
+  if(isDual){
+    if (data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null)) {
+      datasets.push({ label:'Value Target', data:data.valueTarget, backgroundColor:data.valueTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-value' });
+      datasets.push({ label:'Value Accomplishment', data:data.valueAccomp, backgroundColor:data.valueBg, borderRadius:8, yAxisID:'y-value' });
+    }
+    if (data.percentTarget.some(v=>v!==null) || data.percentAccomp.some(v=>v!==null)) {
+      datasets.push({ label:'Percentage Target', data:data.percentTarget, backgroundColor:data.percentTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-percent' });
+      datasets.push({ label:'Percentage Accomplishment', data:data.percentAccomp, backgroundColor:data.percentBg, borderRadius:8, yAxisID:'y-percent' });
+    }
+  } else {
+    datasets.push({ label:'Percentage Target', data:data.percentTarget, backgroundColor:data.percentTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-percent' });
+    datasets.push({ label:'Percentage Accomplishment', data:data.percentAccomp, backgroundColor:data.percentBg, borderRadius:8, yAxisID:'y-percent' });
+    if (data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null)) {
+      datasets.push({ label:'Value Target', data:data.valueTarget, backgroundColor:data.valueTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-value' });
+      datasets.push({ label:'Value Accomplishment', data:data.valueAccomp, backgroundColor:data.valueBg.map(_=>'rgba(148,163,184,0.6)'), borderRadius:8, yAxisID:'y-value' });
+    }
+  }
+
+  const scales = { x:{ grid:{ display:false } } };
+  if(isDual){
+    if(datasets.some(ds=>ds.yAxisID==='y-value')) scales['y-value'] = { type:'linear', position:'left', beginAtZero:true, min:0, max:yValueMax, title:{ display:true, text:'Value' } };
+    scales['y-percent'] = { type:'linear', position:'right', beginAtZero:true, min:0, max: Math.max(100, yPercentMax), title:{ display:true, text:'Percentage (%)' }, grid:{ drawOnChartArea:false } };
+  } else {
+    if(datasets.some(ds=>ds.yAxisID==='y-percent')) scales['y-percent'] = { type:'linear', position:'left', beginAtZero:true, min:0, max: Math.max(100, yPercentMax), title:{ display:true, text:'Percentage (%)' } };
+    if(datasets.some(ds=>ds.yAxisID==='y-value')) scales['y-value'] = { type:'linear', position:(datasets.some(ds=>ds.yAxisID==='y-percent') ? 'right' : 'left'), beginAtZero:true, min:0, max:yValueMax, title:{ display:true, text:'Value' } };
+  }
+
+  midyearChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'top' },
+        datalabels:{
+          display:true,
+          color:'#111',
+          font:{ weight:'bold', size:11 },
+          labels:{
+            inside:{
+              anchor:'center', align:'center',
+              formatter: (value, context) => {
+                if(value === null || value === undefined) return null;
+                const ds = context.dataset.label || '';
+                const idx = context.dataIndex;
+
+                if (context.dataset.yAxisID === 'y-percent') {
+                  if (ds.toLowerCase().includes('target')) return (data.percentTarget[idx] !== null && data.percentTarget[idx] !== undefined) ? `${Number(data.percentTarget[idx]).toFixed(settings.decimals)}%` : null;
+                  if (ds.toLowerCase().includes('accomplish')) return (data.percentAccomp[idx] !== null && data.percentAccomp[idx] !== undefined) ? `${Number(data.percentAccomp[idx]).toFixed(settings.decimals)}%` : null;
+                }
+
+                if (context.dataset.yAxisID === 'y-value') {
+                  if (ds.toLowerCase().includes('target')) {
+                    const v = data.valueTarget[idx];
+                    return (v !== null && v !== undefined) ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
+                  }
+                  if (ds.toLowerCase().includes('accomplish')) {
+                    const v = data.valueAccomp[idx];
+                    return (v !== null && v !== undefined) ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
+                  }
+                }
+                return null;
+              }
+            },
+            bottom:{
+              anchor:'end', align:'end', offset:-6,
+              formatter: (value, context) => {
+                if(value === null || value === undefined) return null;
+                const ds = context.dataset.label || '';
+                const idx = context.dataIndex;
+                if ((ds.toLowerCase().includes('accomplish')) && context.dataset.yAxisID === 'y-value') {
+                  const pct = data.percentAccomp[idx];
+                  return (pct !== null && pct !== undefined) ? `${Number(pct).toFixed(settings.decimals)}%` : null;
+                }
+                return null;
+              }
+            }
+          }
+        }
+      },
+      scales
+    }
+  });
+}
+
+/* -------------------------
+ Refresh all
+------------------------- */
+function refreshAll(){
+  loadEntries();
+  buildMatrix();
+  renderReport();
+  // Ensure the chart uses the selector's current value (includes 'midyear')
+  renderDynamicChart(chartSelector.value || 'overall');
+  renderMidyearChart();
+}
+
+/* -------------------------
+ Event listeners
+------------------------- */
+document.getElementById('clearData').addEventListener('click', ()=> {
+  if(confirm('Remove all data and remarks?')) {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(REMARKS_KEY);
+    entries=[]; remarksData={}; saveEntries(); saveRemarks();
+    refreshAll();
+  }
+});
+// use the selector's value (midyear supported)
+chartSelector.addEventListener('change', ()=>{ renderDynamicChart(chartSelector.value); });
+categorySelector.addEventListener('change', e=>{ selectedCategory = e.target.value; localStorage.setItem("lastCategory", selectedCategory); refreshAll(); });
+
+// Back button now redirects to 1trial.html
+document.getElementById('backBtn').addEventListener('click', ()=>{ window.location.href = "1trial.html"; });
+
+window.addEventListener('DOMContentLoaded', ()=>refreshAll());
+
+/* -------------------------
+ PDF export (uses same buildChartDataFromMatrix logic)
+------------------------- */
+/* (unchanged) — your pdf export code from original file retained below */
+document.getElementById('downloadPDF').addEventListener('click', async () => {
+  loadEntries();
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('l', 'pt', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 30;
+  const usableWidth = pageWidth - margin*2;
+  const now = new Date();
+  const formattedDate = now.toLocaleString('en-PH', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  function addHeader(pageNum){
+    pdf.setFontSize(10); pdf.setFont('helvetica','bold');
+    pdf.text(`CHED — Performance Report`, margin, 30);
+    pdf.setFontSize(8); pdf.setFont('helvetica','normal');
+    pdf.text(`DATE: ${formattedDate}`, pageWidth - margin - 160, 30);
+  }
+
+  async function createChartImage(matrixLocal, view, category){
+    // Render an offscreen chart using same buildChartDataFromMatrix and datalabels formatting
+    const W = 1600, H = 800;
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    off.style.position = 'absolute';
+    document.getElementById('offscreen').appendChild(off);
+    const ctx = off.getContext('2d');
+
+    const data = buildChartDataFromMatrix(matrixLocal, view, category);
+    const labels = data.labels;
+
+    const datasets = [];
+    const isDual = DUAL_AXIS_CATEGORIES.includes(category);
+    const hasValueSeries = data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null);
+    const hasPercentSeries = data.percentTarget.some(v=>v!==null) || data.percentAccomp.some(v=>v!==null);
+
+    if(isDual){
+      if(hasValueSeries){
+        datasets.push({ label:'Value Target', data:data.valueTarget, backgroundColor:data.valueTarget.map(_=>COLOR_TARGET), yAxisID:'y-value' });
+        datasets.push({ label:'Value Accomplishment', data:data.valueAccomp, backgroundColor:data.valueBg, yAxisID:'y-value' });
+      }
+      if(hasPercentSeries){
+        datasets.push({ label:'Percentage Target', data:data.percentTarget, backgroundColor:data.percentTarget.map(_=>COLOR_TARGET), yAxisID:'y-percent' });
+        datasets.push({ label:'Percentage Accomplishment', data:data.percentAccomp, backgroundColor:data.percentBg, yAxisID:'y-percent' });
+      }
+    } else {
+      if(hasPercentSeries){
+        datasets.push({ label:'Percentage Target', data:data.percentTarget, backgroundColor:data.percentTarget.map(_=>COLOR_TARGET), yAxisID:'y-percent' });
+        datasets.push({ label:'Percentage Accomplishment', data:data.percentAccomp, backgroundColor:data.percentBg, yAxisID:'y-percent' });
+      }
+      if(hasValueSeries){
+        datasets.push({ label:'Value Target', data:data.valueTarget, backgroundColor:data.valueTarget.map(_=>COLOR_TARGET), yAxisID:'y-value' });
+        datasets.push({ label:'Value Accomplishment', data:data.valueAccomp, backgroundColor:data.valueBg, yAxisID:'y-value' });
+      }
+    }
+
+    const yValueMax = computeYAxisMax((data.valueTarget || []).concat(data.valueAccomp || []), false);
+    const yPercentMax = computeYAxisMax((data.percentTarget || []).concat(data.percentAccomp || []), true);
+
+    const scales = { x:{ grid:{ display:false } } };
+    if(isDual){
+      if(hasValueSeries) scales['y-value'] = { type:'linear', position:'left', beginAtZero:true, min:0, max:yValueMax };
+      scales['y-percent'] = { type:'linear', position:'right', beginAtZero:true, min:0, max: Math.max(100, yPercentMax), grid:{ drawOnChartArea:false } };
+    } else {
+      if(hasPercentSeries) scales['y-percent'] = { type:'linear', position:'left', beginAtZero:true, min:0, max: Math.max(100, yPercentMax) };
+      if(hasValueSeries) scales['y-value'] = { type:'linear', position:(hasPercentSeries ? 'right' : 'left'), beginAtZero:true, min:0, max:yValueMax };
+    }
+
+    const chart = new Chart(ctx, {
+      type:'bar',
+      data: { labels, datasets },
+      options: {
+        responsive:false,
+        maintainAspectRatio:false,
+        plugins:{ legend:{ position:'top' }, datalabels:{
+          display: true,
+          color: '#111',
+          font: { weight:'bold', size:12 },
+          labels:{
+            inside:{
+              anchor:'center', align:'center',
+              formatter:(value, context) => {
+                if(value === null || value === undefined) return null;
+                if(context.dataset.yAxisID === 'y-percent'){
+                  const idx = context.dataIndex;
+                  if(context.dataset.label.toLowerCase().includes('target')) return data.percentTarget[idx] !== null ? `${Number(data.percentTarget[idx]).toFixed(settings.decimals)}%` : null;
+                  if(context.dataset.label.toLowerCase().includes('accomplish')) return data.percentAccomp[idx] !== null ? `${Number(data.percentAccomp[idx]).toFixed(settings.decimals)}%` : null;
+                }
+                if(context.dataset.yAxisID === 'y-value'){
+                  const idx = context.dataIndex;
+                  if(context.dataset.label.toLowerCase().includes('target')) {
+                    const v = data.valueTarget[idx];
+                    return v !== null && v !== undefined ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
+                  }
+                  if(context.dataset.label.toLowerCase().includes('accomplish')) {
+                    const v = data.valueAccomp[idx];
+                    return v !== null && v !== undefined ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
+                  }
+                }
+                return null;
+              }
+            },
+            bottom:{ anchor:'end', align:'end', offset:-6,
+              formatter:(value, context) => {
+                if(value === null || value === undefined) return null;
+                const ds = context.dataset.label || '';
+                const idx = context.dataIndex;
+                if(ds.toLowerCase().includes('accomplish') && context.dataset.yAxisID === 'y-value'){
+                  const pct = data.percentAccomp[idx];
+                  return (pct !== null && pct !== undefined) ? `${Number(pct).toFixed(settings.decimals)}%` : null;
+                }
+                return null;
+              }
+            }
+          }
+        } },
+        scales
+      }
+    });
+
+    // allow chart to render
+    await new Promise(r => setTimeout(r, 220));
+    const dataUrl = off.toDataURL('image/png',1.0);
+    chart.destroy();
+    document.getElementById('offscreen').removeChild(off);
+    return { dataUrl, width: W, height: H };
+  }
+
+  const chosenCategory = categorySelector.value || 'all';
+  const categoriesToExport = chosenCategory === 'all' ? Object.keys(INDICATORS_BY_CATEGORY) : [chosenCategory];
+
+  let pageNum = 1;
+  addHeader: (function(){})();
+  addHeader(pageNum=1);
+
+  for(let i=0;i<categoriesToExport.length;i++){
+    const cat = categoriesToExport[i];
+    const matrixLocal = buildMatrixForCategory(cat);
+
+    pdf.setFontSize(13); pdf.setFont('helvetica','bold');
+    pdf.text(`Data Report — ${cat}`, margin, 56);
+
+    const headers = [["Indicator", "Type", "Q1", "Q2", "Q3", "Q4", "Total", "Remarks"]];
+    const body = [];
+
+    Object.keys(matrixLocal).forEach(ind=>{
+      const it = matrixLocal[ind];
+      const valsT = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.target);
+      const valsA = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.accomp);
+      const totalT = computeTotalNumericForIndicator(ind, valsT);
+      const totalA = computeTotalNumericForIndicator(ind, valsA);
+      const hasFractionT = valsT.some(v=> typeof v === 'string' && v.includes('/'));
+      const hasFractionA = valsA.some(v=> typeof v === 'string' && v.includes('/'));
+      // determine percent classification for formatted string (use same rules)
+      let isPercentT = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || hasFractionT;
+      let isPercentA = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || hasFractionA;
+      if (cat === "Extension Services") {
+        isPercentT = EXTENSION_PERCENT_INDICATORS.includes(ind);
+        isPercentA = EXTENSION_PERCENT_INDICATORS.includes(ind);
+      }
+      const totalTformatted = (isPercentT) ? (totalT !== null ? `${totalT.toFixed(settings.decimals)}%` : '-') : (totalT !== null ? (Number.isInteger(totalT) ? totalT : totalT.toFixed(settings.decimals)) : '-');
+      const totalAformatted = (isPercentA) ? (totalA !== null ? `${totalA.toFixed(settings.decimals)}%` : '-') : (totalA !== null ? (Number.isInteger(totalA) ? totalA : totalA.toFixed(settings.decimals)) : '-');
+
+      body.push([
+        ind, "Target",
+        formatCellText(it.Q1?.target),
+        formatCellText(it.Q2?.target),
+        formatCellText(it.Q3?.target),
+        formatCellText(it.Q4?.target),
+        totalTformatted,
+        { content: it.remark || '', rowSpan: 2 }
+      ]);
+      body.push([
+        "", "Accomplishment",
+        formatCellText(it.Q1?.accomp),
+        formatCellText(it.Q2?.accomp),
+        formatCellText(it.Q3?.accomp),
+        formatCellText(it.Q4?.accomp),
+        totalAformatted
+      ]);
+    });
+
+    pdf.autoTable({
+      head: headers,
+      body: body,
+      startY: 72,
+      theme: 'grid',
+      headStyles: { fillColor: [79,70,229], textColor: 255 },
+      styles: { fontSize: 8, cellPadding: 4, halign: 'center', valign: 'middle' },
+      columnStyles: { 0: { halign: 'left' }, 1: { halign: 'center' }, 7: { halign: 'left', cellWidth: 'wrap' } },
+      margin: { left: margin, right: margin }
+    });
+
+    let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 12 : 72 + 200;
+
+    const mid = await createChartImage(matrixLocal, 'midyear', cat);
+    const ov = await createChartImage(matrixLocal, 'overall', cat);
+
+    const midH = Math.round( usableWidth * (mid.height / mid.width) );
+    const ovH  = Math.round( usableWidth * (ov.height / ov.width) );
+    const midTitleHeight = 16;
+    const ovTitleHeight = 16;
+    const spacing = 8;
+
+    const remainingSpace = pageHeight - currentY - margin;
+    if (remainingSpace < (midH + midTitleHeight + spacing)) {
+      pdf.addPage(); pageNum++; addHeader(pageNum); currentY = 56;
+    }
+
+    pdf.setFontSize(12); pdf.setFont('helvetica','bold');
+    pdf.text(`MIDYEAR CHART — ${cat}`, margin, currentY);
+    pdf.addImage(mid.dataUrl, 'PNG', margin, currentY + spacing, usableWidth, midH);
+    currentY += midH + spacing + midTitleHeight;
+
+    const remainingSpaceForAnnual = pageHeight - currentY - margin;
+    if (remainingSpaceForAnnual < (ovH + ovTitleHeight)) {
+      pdf.addPage(); pageNum++; addHeader(pageNum); currentY = 56;
+    }
+
+    pdf.setFontSize(12); pdf.setFont('helvetica','bold');
+    pdf.text(`ANNUAL CHART — ${cat}`, margin, currentY);
+    pdf.addImage(ov.dataUrl, 'PNG', margin, currentY + spacing, usableWidth, ovH);
+    currentY += ovH + spacing + ovTitleHeight;
+
+    if(i < categoriesToExport.length - 1){ pdf.addPage(); pageNum++; addHeader(pageNum); }
+  }
+
+  // signature page
+  pdf.addPage(); addHeader(pageNum+1);
+  let sigY = 120;
+  const col1 = margin;
+  const col2 = pageWidth / 3;
+  const col3 = (pageWidth / 3) * 2 - 20;
+  pdf.setFontSize(11); pdf.setFont('helvetica', 'normal');
+  pdf.text("Prepared by:", col1, sigY + 15);
+  pdf.line(col1, sigY + 60, col1 + 150, sigY + 60);
+  pdf.text("Signature over Printed Name", col1, sigY + 75);
+  pdf.text("Approved by:", col2, sigY + 15);
+  pdf.line(col2, sigY + 60, col2 + 150, sigY + 60);
+  pdf.text("Authorized Official", col2, sigY + 75);
+  pdf.text("In coordination with:", col3, sigY + 15);
+  pdf.line(col3, sigY + 60, col3 + 150, sigY + 60);
+  pdf.text("Partner Agency / Office", col3, sigY + 75);
+
+  pdf.save('PhysicalPerformanceReport.pdf');
+});
+
+/* -------------------------
+ PDF helper + small utils
+------------------------- */
+function formatCellText(v){
+  if (v === null || v === undefined || v === '') return '-';
+  if (typeof v === 'string' && v.includes('/')) {
+    const [nS, dS] = v.split('/');
+    const n = Number(nS)||0, d = Number(dS)||0;
+    if(d>0) return `${(n/d*100).toFixed(settings.decimals)}% (${n}/${d})`;
+    return '-';
+  }
+  return v;
+}
+</script>
+</body>
+</html>
