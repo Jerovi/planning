@@ -3,117 +3,478 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDO Data Entry</title>
+  <title>PDO Data Entry System</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .fade-in { animation: fadeIn 0.7s ease-in-out; }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+      font-family: 'Inter', sans-serif;
     }
+    
+    .fade-in {
+      animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .slide-in {
+      animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
     .glass {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    }
+    
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .input-group {
+      position: relative;
+    }
+    
+    .input-group input:focus + label,
+    .input-group select:focus + label,
+    .input-group input:not(:placeholder-shown) + label,
+    .input-group select:valid + label {
+      transform: translateY(-1.5rem) scale(0.85);
+      color: #667eea;
+    }
+    
+    .floating-label {
+      position: absolute;
+      left: 1rem;
+      top: 1rem;
+      transition: all 0.3s ease;
+      pointer-events: none;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    
+    .custom-input {
+      transition: all 0.3s ease;
+    }
+    
+    .custom-input:focus {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+    }
+    
+    .preview-card {
+      background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+      border-left: 4px solid #667eea;
+    }
+    
+    .success-toast {
+      position: fixed;
+      top: 2rem;
+      right: 2rem;
+      z-index: 1000;
+      animation: slideInRight 0.3s ease-out;
+    }
+    
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    .stat-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #764ba2;
+    }
+    
+    .tooltip {
+      position: relative;
+    }
+    
+    .tooltip::before {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .tooltip:hover::before {
+      opacity: 1;
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-indigo-100 via-slate-100 to-slate-200 min-h-screen flex items-center justify-center p-6">
-  <div class="glass fade-in p-8 rounded-2xl shadow-2xl w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen">
+  
+  <!-- Header -->
+  <header class="gradient-bg text-white py-6 px-6 shadow-lg">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex items-center justify-between">
+        <div class="fade-in">
+          <h1 class="text-3xl font-bold flex items-center gap-3">
+            <i class="fas fa-chart-line"></i>
+            PDO Performance Data Entry
+          </h1>
+          <p class="text-indigo-100 mt-1">Commission on Higher Education - Performance Dashboard</p>
+        </div>
+        <div class="fade-in">
+          <span class="stat-badge">
+            <i class="fas fa-database"></i>
+            <span id="entriesCount">0</span> Entries
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
 
-    <!-- Form Section -->
-    <div>
-      <h1 class="text-3xl font-extrabold text-center mb-6 text-indigo-700 drop-shadow-md">📋 PDO Data Entry</h1>
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto p-6 mt-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Form Section -->
+      <div class="lg:col-span-2">
+        <div class="glass fade-in p-8 rounded-3xl shadow-2xl">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+              <i class="fas fa-edit text-indigo-600"></i>
+              Data Entry Form
+            </h2>
+            <button id="resetForm" class="text-gray-500 hover:text-red-600 transition" data-tooltip="Clear Form">
+              <i class="fas fa-redo text-xl"></i>
+            </button>
+          </div>
 
-      <!-- Category -->
-      <div class="mb-4">
-        <label class="block text-gray-700 font-semibold mb-1">📂 Category</label>
-        <select id="category" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-indigo-300 transition" required>
-          <option value="">-- Select Category --</option>
-          <option value="Higher Education">Higher Education</option>
-          <option value="Research Program">Research Program</option>
-          <option value="Extension Services">Extension Services</option>
-        </select>
+          <form id="dataForm" class="space-y-6">
+            
+            <!-- Category Selection -->
+            <div class="slide-in">
+              <label class="block text-gray-700 font-semibold mb-3 flex items-center gap-2">
+                <i class="fas fa-folder text-indigo-600"></i>
+                Category
+              </label>
+              <select id="category" class="custom-input w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-300 focus:border-indigo-500 transition outline-none bg-white" required>
+                <option value="">-- Select Category --</option>
+                <option value="Higher Education">📚 Higher Education</option>
+                <option value="Research Program">🔬 Research Program</option>
+                <option value="Extension Services">🤝 Extension Services</option>
+              </select>
+            </div>
+
+            <!-- Indicator Selection -->
+            <div class="slide-in" style="animation-delay: 0.1s">
+              <label class="block text-gray-700 font-semibold mb-3 flex items-center gap-2">
+                <i class="fas fa-bullseye text-indigo-600"></i>
+                Indicator
+              </label>
+              <select id="indicator" class="custom-input w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-300 focus:border-indigo-500 transition outline-none bg-white" required disabled>
+                <option value="">-- Select Indicator --</option>
+              </select>
+            </div>
+
+            <!-- Quarter Selection -->
+            <div class="slide-in" style="animation-delay: 0.2s">
+              <label class="block text-gray-700 font-semibold mb-3 flex items-center gap-2">
+                <i class="fas fa-calendar-alt text-indigo-600"></i>
+                Quarter
+              </label>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <label class="relative">
+                  <input type="radio" name="quarter" value="Q1" class="peer sr-only" required>
+                  <div class="cursor-pointer bg-white border-2 border-gray-200 rounded-xl p-4 text-center transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:shadow-lg hover:border-indigo-300">
+                    <div class="font-bold text-gray-700 peer-checked:text-indigo-600">Q1</div>
+                    <div class="text-xs text-gray-500">Jan - Mar</div>
+                  </div>
+                </label>
+                <label class="relative">
+                  <input type="radio" name="quarter" value="Q2" class="peer sr-only">
+                  <div class="cursor-pointer bg-white border-2 border-gray-200 rounded-xl p-4 text-center transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:shadow-lg hover:border-indigo-300">
+                    <div class="font-bold text-gray-700 peer-checked:text-indigo-600">Q2</div>
+                    <div class="text-xs text-gray-500">Apr - Jun</div>
+                  </div>
+                </label>
+                <label class="relative">
+                  <input type="radio" name="quarter" value="Q3" class="peer sr-only">
+                  <div class="cursor-pointer bg-white border-2 border-gray-200 rounded-xl p-4 text-center transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:shadow-lg hover:border-indigo-300">
+                    <div class="font-bold text-gray-700 peer-checked:text-indigo-600">Q3</div>
+                    <div class="text-xs text-gray-500">Jul - Sep</div>
+                  </div>
+                </label>
+                <label class="relative">
+                  <input type="radio" name="quarter" value="Q4" class="peer sr-only">
+                  <div class="cursor-pointer bg-white border-2 border-gray-200 rounded-xl p-4 text-center transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:shadow-lg hover:border-indigo-300">
+                    <div class="font-bold text-gray-700 peer-checked:text-indigo-600">Q4</div>
+                    <div class="text-xs text-gray-500">Oct - Dec</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Data Type Selection -->
+            <div class="slide-in" style="animation-delay: 0.3s">
+              <label class="block text-gray-700 font-semibold mb-3 flex items-center gap-2">
+                <i class="fas fa-sliders-h text-indigo-600"></i>
+                Data Type
+              </label>
+              <div class="grid grid-cols-2 gap-3">
+                <label class="relative">
+                  <input type="radio" name="dataType" value="fraction" class="peer sr-only" checked>
+                  <div class="cursor-pointer bg-white border-2 border-gray-200 rounded-xl p-4 text-center transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:shadow-lg hover:border-indigo-300">
+                    <i class="fas fa-percent text-2xl mb-2 text-gray-600 peer-checked:text-indigo-600"></i>
+                    <div class="font-semibold text-gray-700">Fraction/Percentage</div>
+                    <div class="text-xs text-gray-500 mt-1">e.g., 784/980</div>
+                  </div>
+                </label>
+                <label class="relative">
+                  <input type="radio" name="dataType" value="whole" class="peer sr-only">
+                  <div class="cursor-pointer bg-white border-2 border-gray-200 rounded-xl p-4 text-center transition peer-checked:border-indigo-600 peer-checked:bg-indigo-50 peer-checked:shadow-lg hover:border-indigo-300">
+                    <i class="fas fa-hashtag text-2xl mb-2 text-gray-600 peer-checked:text-indigo-600"></i>
+                    <div class="font-semibold text-gray-700">Whole Number</div>
+                    <div class="text-xs text-gray-500 mt-1">e.g., 500</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Fraction/Percentage Inputs -->
+            <div id="fractionInputs" class="space-y-4 slide-in" style="animation-delay: 0.4s">
+              <div class="bg-indigo-50 rounded-xl p-6 space-y-4">
+                <h3 class="font-semibold text-gray-700 flex items-center gap-2">
+                  <i class="fas fa-divide text-indigo-600"></i>
+                  Fraction/Percentage Values
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🎯 Target (Numerator)</label>
+                    <input type="number" id="target" placeholder="e.g., 784" class="custom-input w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-indigo-300 focus:border-indigo-500 transition outline-none" step="0.01" min="0">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🔢 Target (Denominator)</label>
+                    <input type="number" id="targetDenom" placeholder="e.g., 980" class="custom-input w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-indigo-300 focus:border-indigo-500 transition outline-none" step="0.01" min="0">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">✅ Accomplishment (Numerator)</label>
+                    <input type="number" id="accomp" placeholder="e.g., 850" class="custom-input w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-green-300 focus:border-green-500 transition outline-none" step="0.01" min="0">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🔢 Accomplishment (Denominator)</label>
+                    <input type="number" id="accompDenom" placeholder="e.g., 1020" class="custom-input w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-green-300 focus:border-green-500 transition outline-none" step="0.01" min="0">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Whole Number Inputs -->
+            <div id="wholeInputs" class="space-y-4 slide-in hidden" style="animation-delay: 0.4s">
+              <div class="bg-green-50 rounded-xl p-6 space-y-4">
+                <h3 class="font-semibold text-gray-700 flex items-center gap-2">
+                  <i class="fas fa-calculator text-green-600"></i>
+                  Whole Number Values
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">🎯 Target</label>
+                    <input type="number" id="targetWhole" placeholder="e.g., 500" class="custom-input w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-green-300 focus:border-green-500 transition outline-none" step="0.01" min="0">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">✅ Accomplishment</label>
+                    <input type="number" id="accompWhole" placeholder="e.g., 450" class="custom-input w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-4 focus:ring-green-300 focus:border-green-500 transition outline-none" step="0.01" min="0">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-4 pt-4">
+              <button type="submit" class="btn-primary flex-1 text-white p-4 rounded-xl font-semibold shadow-lg flex items-center justify-center gap-2">
+                <i class="fas fa-save"></i>
+                Save Entry
+              </button>
+              <a href="updatetest.html" class="btn-secondary flex-1 text-center text-white p-4 rounded-xl font-semibold shadow-lg flex items-center justify-center gap-2">
+                <i class="fas fa-chart-bar"></i>
+                View Report
+              </a>
+            </div>
+          </form>
+        </div>
       </div>
 
-      <form id="dataForm" class="space-y-5">
-        <!-- Indicator -->
-        <div>
-          <label class="block text-gray-700 font-semibold mb-1">📌 Indicator</label>
-          <select id="indicator" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-indigo-300 transition" required>
-            <option value="">-- Select Indicator --</option>
-          </select>
-        </div>
-
-        <!-- Quarter -->
-        <div>
-          <label class="block text-gray-700 font-semibold mb-1">🗓 Quarter</label>
-          <select id="quarter" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-indigo-300 transition" required>
-            <option value="">-- Select Quarter --</option>
-            <option value="Q1">1st Quarter</option>
-            <option value="Q2">2nd Quarter</option>
-            <option value="Q3">3rd Quarter</option>
-            <option value="Q4">4th Quarter</option>
-          </select>
-        </div>
-
-        <!-- Target & Denominator -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-gray-700 font-semibold mb-1">🎯 Target (Numerator)</label>
-            <input type="number" id="target" placeholder="e.g., 784" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-teal-300 transition" step="1" min="0">
-          </div>
-          <div>
-            <label class="block text-gray-700 font-semibold mb-1">🔢 Target (Denominator)</label>
-            <input type="number" id="targetDenom" placeholder="e.g., 980" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-teal-300 transition" step="1" min="0">
-          </div>
-        </div>
-
-        <!-- Accomplishment & Denominator -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-gray-700 font-semibold mb-1">✅ Accomplishment (Numerator)</label>
-            <input type="number" id="accomp" placeholder="e.g., 850" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-green-300 transition" step="1" min="0">
-          </div>
-          <div>
-            <label class="block text-gray-700 font-semibold mb-1">🔢 Accomplishment (Denominator)</label>
-            <input type="number" id="accompDenom" placeholder="e.g., 1020" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-green-300 transition" step="1" min="0">
+      <!-- Preview & Stats Section -->
+      <div class="lg:col-span-1 space-y-6">
+        
+        <!-- Live Preview -->
+        <div class="glass fade-in p-6 rounded-3xl shadow-2xl" style="animation-delay: 0.2s">
+          <h2 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+            <i class="fas fa-eye text-indigo-600"></i>
+            Live Preview
+          </h2>
+          <div id="previewBox" class="space-y-3">
+            <div class="preview-card p-4 rounded-lg">
+              <div class="text-sm text-gray-600 font-medium">Category</div>
+              <div id="prevCategory" class="text-lg font-bold text-gray-800 mt-1">-</div>
+            </div>
+            <div class="preview-card p-4 rounded-lg">
+              <div class="text-sm text-gray-600 font-medium">Indicator</div>
+              <div id="prevIndicator" class="text-lg font-bold text-gray-800 mt-1">-</div>
+            </div>
+            <div class="preview-card p-4 rounded-lg">
+              <div class="text-sm text-gray-600 font-medium">Quarter</div>
+              <div id="prevQuarter" class="text-lg font-bold text-gray-800 mt-1">-</div>
+            </div>
+            <div class="preview-card p-4 rounded-lg">
+              <div class="text-sm text-gray-600 font-medium">Target</div>
+              <div id="prevTarget" class="text-lg font-bold text-indigo-600 mt-1">-</div>
+            </div>
+            <div class="preview-card p-4 rounded-lg">
+              <div class="text-sm text-gray-600 font-medium">Accomplishment</div>
+              <div id="prevAccomp" class="text-lg font-bold text-green-600 mt-1">-</div>
+            </div>
           </div>
         </div>
 
-        <!-- Whole Numbers -->
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-gray-700 font-semibold mb-1">🔹 Target (Number)</label>
-            <input type="number" id="targetWhole" placeholder="e.g., 500" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-blue-300 transition" step="1" min="0">
-          </div>
-          <div>
-            <label class="block text-gray-700 font-semibold mb-1">🔸 Accomplishment (Number)</label>
-            <input type="number" id="accompWhole" placeholder="e.g., 450" class="w-full p-3 border rounded-xl focus:ring-4 focus:ring-blue-300 transition" step="1" min="0">
+        <!-- Quick Stats -->
+        <div class="glass fade-in p-6 rounded-3xl shadow-2xl" style="animation-delay: 0.3s">
+          <h2 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+            <i class="fas fa-chart-pie text-indigo-600"></i>
+            Quick Stats
+          </h2>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
+              <span class="text-gray-700 font-medium">Total Entries</span>
+              <span id="totalEntriesStat" class="text-2xl font-bold text-indigo-600">0</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+              <span class="text-gray-700 font-medium">Categories</span>
+              <span id="categoriesStat" class="text-2xl font-bold text-purple-600">0</span>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
+              <span class="text-gray-700 font-medium">Last Updated</span>
+              <span id="lastUpdatedStat" class="text-sm font-semibold text-pink-600">-</span>
+            </div>
           </div>
         </div>
 
-        <!-- Buttons -->
-        <div class="flex justify-between gap-4 pt-2">
-          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-semibold shadow-md transform hover:scale-105 transition">
-            ➕ Save Entry
-          </button>
-          <a href="updatetest.html" class="w-full text-center bg-green-600 hover:bg-green-700 text-white p-3 rounded-xl font-semibold shadow-md transform hover:scale-105 transition">
-            📊 View Report
-          </a>
+        <!-- Help Card -->
+        <div class="glass fade-in p-6 rounded-3xl shadow-2xl bg-gradient-to-br from-amber-50 to-orange-50" style="animation-delay: 0.4s">
+          <h2 class="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+            <i class="fas fa-info-circle text-amber-600"></i>
+            Quick Guide
+          </h2>
+          <ul class="space-y-2 text-sm text-gray-700">
+            <li class="flex items-start gap-2">
+              <i class="fas fa-check-circle text-green-500 mt-1"></i>
+              <span>Select category first to enable indicators</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fas fa-check-circle text-green-500 mt-1"></i>
+              <span>Choose data type: Fraction or Whole number</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fas fa-check-circle text-green-500 mt-1"></i>
+              <span>Fill required fields and preview updates live</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fas fa-check-circle text-green-500 mt-1"></i>
+              <span>View comprehensive reports anytime</span>
+            </li>
+          </ul>
         </div>
-      </form>
+      </div>
     </div>
+  </div>
 
-    <!-- Preview Section -->
-    <div class="glass p-6 rounded-2xl shadow-inner fade-in">
-      <h2 class="text-2xl font-bold mb-4 text-slate-700">🔎 Live Preview</h2>
-      <div id="previewBox" class="space-y-3 text-gray-700">
-        <p><strong>Category:</strong> <span id="prevCategory">-</span></p>
-        <p><strong>Indicator:</strong> <span id="prevIndicator">-</span></p>
-        <p><strong>Quarter:</strong> <span id="prevQuarter">-</span></p>
-        <p><strong>Target:</strong> <span id="prevTarget">-</span></p>
-        <p><strong>Accomplishment:</strong> <span id="prevAccomp">-</span></p>
+  <!-- Toast Notification -->
+  <div id="toast" class="success-toast hidden">
+    <div class="glass p-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px]">
+      <div class="flex-shrink-0">
+        <i class="fas fa-check-circle text-3xl text-green-500"></i>
+      </div>
+      <div>
+        <div class="font-semibold text-gray-800">Success!</div>
+        <div class="text-sm text-gray-600" id="toastMessage">Entry saved successfully</div>
       </div>
     </div>
   </div>
@@ -128,6 +489,9 @@
     const categoryEl = document.getElementById("category");
     const indicatorEl = document.getElementById("indicator");
     const form = document.getElementById("dataForm");
+    const fractionInputs = document.getElementById("fractionInputs");
+    const wholeInputs = document.getElementById("wholeInputs");
+    const dataTypeInputs = document.querySelectorAll('input[name="dataType"]');
 
     // Preview elements
     const prevCategory = document.getElementById("prevCategory");
@@ -136,25 +500,88 @@
     const prevTarget = document.getElementById("prevTarget");
     const prevAccomp = document.getElementById("prevAccomp");
 
+    // Stats elements
+    const entriesCount = document.getElementById("entriesCount");
+    const totalEntriesStat = document.getElementById("totalEntriesStat");
+    const categoriesStat = document.getElementById("categoriesStat");
+    const lastUpdatedStat = document.getElementById("lastUpdatedStat");
+
+    // Update stats on load
+    function updateStats() {
+      const data = JSON.parse(localStorage.getItem("chedData")) || [];
+      const uniqueCategories = new Set(data.map(d => d.category)).size;
+      const lastEntry = data[data.length - 1];
+      
+      entriesCount.textContent = data.length;
+      totalEntriesStat.textContent = data.length;
+      categoriesStat.textContent = uniqueCategories;
+      
+      if (lastEntry && lastEntry.timestamp) {
+        const date = new Date(lastEntry.timestamp);
+        lastUpdatedStat.textContent = date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } else {
+        lastUpdatedStat.textContent = '-';
+      }
+    }
+
+    // Toggle input sections based on data type
+    dataTypeInputs.forEach(input => {
+      input.addEventListener('change', (e) => {
+        if (e.target.value === 'fraction') {
+          fractionInputs.classList.remove('hidden');
+          wholeInputs.classList.add('hidden');
+          // Clear whole number inputs
+          document.getElementById('targetWhole').value = '';
+          document.getElementById('accompWhole').value = '';
+        } else {
+          fractionInputs.classList.add('hidden');
+          wholeInputs.classList.remove('hidden');
+          // Clear fraction inputs
+          document.getElementById('target').value = '';
+          document.getElementById('targetDenom').value = '';
+          document.getElementById('accomp').value = '';
+          document.getElementById('accompDenom').value = '';
+        }
+        updatePreview();
+      });
+    });
+
     function updatePreview() {
       const category = categoryEl.value || "-";
       const indicator = indicatorEl.value || "-";
-      const quarter = document.getElementById("quarter").value || "-";
+      const quarterInput = document.querySelector('input[name="quarter"]:checked');
+      const quarter = quarterInput ? quarterInput.value : "-";
 
-      const t = document.getElementById("target").value;
-      const td = document.getElementById("targetDenom").value;
-      const a = document.getElementById("accomp").value;
-      const ad = document.getElementById("accompDenom").value;
-      const tw = document.getElementById("targetWhole").value;
-      const aw = document.getElementById("accompWhole").value;
+      const dataType = document.querySelector('input[name="dataType"]:checked').value;
 
       let targetText = "-";
-      if (t && td) targetText = `${t}/${td}`;
-      if (tw) targetText = tw;
-
       let accompText = "-";
-      if (a && ad) accompText = `${a}/${ad}`;
-      if (aw) accompText = aw;
+
+      if (dataType === 'fraction') {
+        const t = document.getElementById("target").value;
+        const td = document.getElementById("targetDenom").value;
+        const a = document.getElementById("accomp").value;
+        const ad = document.getElementById("accompDenom").value;
+
+        if (t && td) {
+          const percentage = ((parseFloat(t) / parseFloat(td)) * 100).toFixed(2);
+          targetText = `${percentage}% (${t}/${td})`;
+        }
+        if (a && ad) {
+          const percentage = ((parseFloat(a) / parseFloat(ad)) * 100).toFixed(2);
+          accompText = `${percentage}% (${a}/${ad})`;
+        }
+      } else {
+        const tw = document.getElementById("targetWhole").value;
+        const aw = document.getElementById("accompWhole").value;
+        if (tw) targetText = tw;
+        if (aw) accompText = aw;
+      }
 
       prevCategory.textContent = category;
       prevIndicator.textContent = indicator;
@@ -173,55 +600,125 @@
     categoryEl.addEventListener("change", () => {
       const category = categoryEl.value;
       indicatorEl.innerHTML = '<option value="">-- Select Indicator --</option>';
+      
       if (category && INDICATORS_BY_CATEGORY[category]) {
+        indicatorEl.disabled = false;
         INDICATORS_BY_CATEGORY[category].forEach(ind => {
           const opt = document.createElement("option");
           opt.value = ind;
           opt.textContent = ind;
           indicatorEl.appendChild(opt);
         });
+      } else {
+        indicatorEl.disabled = true;
+      }
+    });
+
+    // Show toast notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      toastMessage.textContent = message;
+      toast.classList.remove('hidden');
+      
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Reset form
+    document.getElementById('resetForm').addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear the form?')) {
+        form.reset();
+        indicatorEl.innerHTML = '<option value="">-- Select Indicator --</option>';
+        indicatorEl.disabled = true;
+        updatePreview();
       }
     });
 
     // Save entry
     form.addEventListener("submit", function(e) {
       e.preventDefault();
+      
       const category = categoryEl.value;
       const indicator = indicatorEl.value;
-      const quarter = document.getElementById("quarter").value;
+      const quarterInput = document.querySelector('input[name="quarter"]:checked');
+      const quarter = quarterInput ? quarterInput.value : '';
 
-      const target = Number(document.getElementById("target").value) || 0;
-      const targetDenom = Number(document.getElementById("targetDenom").value) || 0;
-      const accomp = Number(document.getElementById("accomp").value) || 0;
-      const accompDenom = Number(document.getElementById("accompDenom").value) || 0;
-      const targetWhole = Number(document.getElementById("targetWhole").value) || 0;
-      const accompWhole = Number(document.getElementById("accompWhole").value) || 0;
-
-      if (!category || !indicator) {
-        alert("⚠ Please select category and indicator.");
+      if (!category || !indicator || !quarter) {
+        alert("⚠️ Please fill in all required fields: Category, Indicator, and Quarter.");
         return;
       }
 
-      const usingFraction = target > 0 && targetDenom > 0 && accomp >= 0 && accompDenom > 0;
-      const usingWhole = targetWhole > 0 || accompWhole > 0;
+      const dataType = document.querySelector('input[name="dataType"]:checked').value;
 
-      if (!usingFraction && !usingWhole) {
-        alert("⚠ Please enter either numerator/denominator or whole numbers.");
-        return;
+      let target = 0, targetDenom = 0, accomp = 0, accompDenom = 0;
+      let targetWhole = 0, accompWhole = 0;
+
+      if (dataType === 'fraction') {
+        target = Number(document.getElementById("target").value) || 0;
+        targetDenom = Number(document.getElementById("targetDenom").value) || 0;
+        accomp = Number(document.getElementById("accomp").value) || 0;
+        accompDenom = Number(document.getElementById("accompDenom").value) || 0;
+
+        if (!target || !targetDenom || accomp === '' || accompDenom === '') {
+          alert("⚠️ Please enter both numerator and denominator for target and accomplishment.");
+          return;
+        }
+      } else {
+        targetWhole = Number(document.getElementById("targetWhole").value) || 0;
+        accompWhole = Number(document.getElementById("accompWhole").value) || 0;
+
+        if (!targetWhole || accompWhole === '') {
+          alert("⚠️ Please enter both target and accomplishment values.");
+          return;
+        }
       }
 
       let data = JSON.parse(localStorage.getItem("chedData")) || [];
-      data.push({ category, indicator, quarter, target, targetDenom, accomp, accompDenom, targetWhole, accompWhole });
+      
+      // Check for duplicate entry
+      const duplicate = data.find(d => 
+        d.category === category && 
+        d.indicator === indicator && 
+        d.quarter === quarter
+      );
+
+      if (duplicate) {
+        if (!confirm(`An entry for ${indicator} in ${quarter} already exists. Do you want to replace it?`)) {
+          return;
+        }
+        // Remove the old entry
+        data = data.filter(d => !(d.category === category && d.indicator === indicator && d.quarter === quarter));
+      }
+
+      data.push({ 
+        category, 
+        indicator, 
+        quarter, 
+        target, 
+        targetDenom, 
+        accomp, 
+        accompDenom, 
+        targetWhole, 
+        accompWhole,
+        timestamp: new Date().toISOString()
+      });
+      
       localStorage.setItem("chedData", JSON.stringify(data));
 
-      alert("✅ Entry saved! You can now view the report.");
+      showToast(`Entry saved successfully! (${indicator} - ${quarter})`);
+      
       form.reset();
       indicatorEl.innerHTML = '<option value="">-- Select Indicator --</option>';
+      indicatorEl.disabled = true;
       updatePreview();
+      updateStats();
     });
 
-    // Initialize preview
+    // Initialize
     updatePreview();
+    updateStats();
   </script>
 </body>
 </html>
