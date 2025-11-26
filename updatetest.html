@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>CHED Report — Performance Dashboard (fixed fraction handling + flexible scaling)</title>
+<title>CHED Report — Performance Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <!-- Use the same Chart.js and datalabels you already had -->
@@ -59,7 +59,6 @@ th, td { white-space: normal !important; word-break: break-word; max-width: 180p
             <th class="p-2 border">Q3</th>
             <th class="p-2 border">Q4</th>
             <th class="p-2 border">Total</th>
-            <th class="p-2 border">QUARTELY</th>
             <th class="p-2 border">Remarks</th>
         </tr>
         </thead>
@@ -71,10 +70,8 @@ th, td { white-space: normal !important; word-break: break-word; max-width: 180p
 <section class="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-xl fade-in">
     <div class="flex flex-col items-center mb-4">
     <label for="chartSelector" class="text-lg font-semibold mb-2 flex items-center text-slate-700">Select Report View:</label>
-    <!-- IMPORTANT: midyear option added here (value = 'midyear') -->
     <select id="chartSelector" class="px-6 py-3 text-white bg-indigo-600 rounded-xl shadow-md font-semibold text-base hover:bg-indigo-700 transition focus:outline-none focus:ring-4 focus:ring-indigo-400">
         <option value="overall">Annual</option>
-        <option value="midyear">Midyear (Q1 + Q2)</option>
         <option value="Q1">Quarter 1</option>
         <option value="Q2">Quarter 2</option>
         <option value="Q3">Quarter 3</option>
@@ -83,15 +80,6 @@ th, td { white-space: normal !important; word-break: break-word; max-width: 180p
     </div>
     <div style="height:420px;">
     <canvas id="dynamicChart" aria-label="Performance chart" role="img"></canvas>
-    </div>
-</section>
-
-<section id="midyearSection" class="bg-white/80 backdrop-blur-lg p-6 rounded-2xl shadow-xl fade-in">
-    <div class="flex items-center justify-center mb-4">
-    <h3 class="text-lg font-semibold text-slate-700">Midyear (Q1 + Q2)</h3>
-    </div>
-    <div style="height:420px;">
-    <canvas id="midyearChart" aria-label="Midyear chart" role="img"></canvas>
     </div>
 </section>
 
@@ -132,7 +120,6 @@ let matrix = {};
 let settings = DEFAULT_SETTINGS;
 
 let dynamicChart = null;
-let midyearChart = null;
 
 const reportTable = document.getElementById('reportTable');
 const statusEl = document.getElementById('status');
@@ -285,19 +272,16 @@ function renderReport() {
 
   inds.forEach(ind => {
     const t = matrix[ind];
-    const valuesTargetRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.target).filter(v=>v !== undefined);
-    const valuesAccompRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.accomp).filter(v=>v !== undefined);
+    const valuesTargetRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.target).filter(v=>v !== undefined && v !== null && v !== '');
+    const valuesAccompRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.accomp).filter(v=>v !== undefined && v !== null && v !== '');
 
-    const totalTarget = computeTotalFormatted(ind, valuesTargetRaw);
-    const totalAccomp = computeTotalFormatted(ind, valuesAccompRaw);
-
-    // Midyear (Q1 + Q2) totals for display in the "Overall" column — note: this does not modify storage.
-    const totalTargetMid = computeTotalFormatted(ind, [t.Q1?.target, t.Q2?.target]);
-    const totalAccompMid = computeTotalFormatted(ind, [t.Q1?.accomp, t.Q2?.accomp]);
+    // Only show total if there are at least 2 quarters with data
+    const totalTarget = valuesTargetRaw.length >= 2 ? computeTotalFormatted(ind, valuesTargetRaw) : "-";
+    const totalAccomp = valuesAccompRaw.length >= 2 ? computeTotalFormatted(ind, valuesAccompRaw) : "-";
 
     const header = document.createElement('tr');
     header.className = 'bg-indigo-50 font-semibold';
-    header.innerHTML = `<td class="p-2" colspan="8" style="word-break:break-word;">${escapeHtml(ind)}</td>`;
+    header.innerHTML = `<td class="p-2" colspan="7" style="word-break:break-word;">${escapeHtml(ind)}</td>`;
     reportTable.appendChild(header);
 
     const trT = document.createElement('tr');
@@ -309,7 +293,6 @@ function renderReport() {
       <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q3?.target)}</td>
       <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q4?.target)}</td>
       <td class="border p-2" style="max-width:120px;">${totalTarget}</td>
-      <td class="border p-2" style="max-width:120px;">${totalTargetMid}</td>
       <td class="border p-2 small text-slate-500 remarks-cell" rowspan="2" contenteditable="true" data-indicator="${escapeHtml(ind)}" style="max-width:220px;min-width:180px;">${remarkContent}</td>
     `;
     reportTable.appendChild(trT);
@@ -322,7 +305,6 @@ function renderReport() {
       <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q3?.accomp)}</td>
       <td class="border p-2" style="max-width:120px;">${formatValueForTable(t.Q4?.accomp)}</td>
       <td class="border p-2" style="max-width:120px;">${totalAccomp}</td>
-      <td class="border p-2" style="max-width:120px;">${totalAccompMid}</td>
     `;
     reportTable.appendChild(trA);
   });
@@ -366,10 +348,6 @@ function buildChartDataFromMatrix(matrixLocal, view, category = selectedCategory
     if(view === 'overall'){
       tValRaw = ['Q1','Q2','Q3','Q4'].map(q => t[q]?.target);
       aValRaw = ['Q1','Q2','Q3','Q4'].map(q => t[q]?.accomp);
-    } else if (view === 'midyear') {
-      // <-- midyear handled here: only Q1 + Q2
-      tValRaw = [t.Q1?.target, t.Q2?.target];
-      aValRaw = [t.Q1?.accomp, t.Q2?.accomp];
     } else { // single quarter
       tValRaw = [t[view]?.target];
       aValRaw = [t[view]?.accomp];
@@ -657,117 +635,13 @@ function renderDynamicChart(view='overall'){
 }
 
 /* -------------------------
- Midyear chart (Q1+Q2)
-------------------------- */
-function renderMidyearChart(){
-  if(midyearChart){ midyearChart.destroy(); midyearChart = null; }
-  const canvas = document.getElementById('midyearChart');
-  const ctx = canvas.getContext('2d');
-
-  const data = buildChartDataFromMatrix(matrix, 'midyear', selectedCategory);
-  const labels = data.labels;
-  const isDual = DUAL_AXIS_CATEGORIES.includes(selectedCategory);
-
-  const yValueMax = computeYAxisMax((data.valueTarget || []).concat(data.valueAccomp || []), false);
-  const yPercentMax = computeYAxisMax((data.percentTarget || []).concat(data.percentAccomp || []), true);
-
-  const datasets = [];
-  if(isDual){
-    if (data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null)) {
-      datasets.push({ label:'Value Target', data:data.valueTarget, backgroundColor:data.valueTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-value' });
-      datasets.push({ label:'Value Accomplishment', data:data.valueAccomp, backgroundColor:data.valueBg, borderRadius:8, yAxisID:'y-value' });
-    }
-    if (data.percentTarget.some(v=>v!==null) || data.percentAccomp.some(v=>v!==null)) {
-      datasets.push({ label:'Percentage Target', data:data.percentTarget, backgroundColor:data.percentTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-percent' });
-      datasets.push({ label:'Percentage Accomplishment', data:data.percentAccomp, backgroundColor:data.percentBg, borderRadius:8, yAxisID:'y-percent' });
-    }
-  } else {
-    datasets.push({ label:'Percentage Target', data:data.percentTarget, backgroundColor:data.percentTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-percent' });
-    datasets.push({ label:'Percentage Accomplishment', data:data.percentAccomp, backgroundColor:data.percentBg, borderRadius:8, yAxisID:'y-percent' });
-    if (data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null)) {
-      datasets.push({ label:'Value Target', data:data.valueTarget, backgroundColor:data.valueTarget.map(_=>COLOR_TARGET), borderRadius:8, yAxisID:'y-value' });
-      datasets.push({ label:'Value Accomplishment', data:data.valueAccomp, backgroundColor:data.valueBg.map(_=>'rgba(148,163,184,0.6)'), borderRadius:8, yAxisID:'y-value' });
-    }
-  }
-
-  const scales = { x:{ grid:{ display:false } } };
-  if(isDual){
-    if(datasets.some(ds=>ds.yAxisID==='y-value')) scales['y-value'] = { type:'linear', position:'left', beginAtZero:true, min:0, max:yValueMax, title:{ display:true, text:'Value' } };
-    scales['y-percent'] = { type:'linear', position:'right', beginAtZero:true, min:0, max: Math.max(100, yPercentMax), title:{ display:true, text:'Percentage (%)' }, grid:{ drawOnChartArea:false } };
-  } else {
-    if(datasets.some(ds=>ds.yAxisID==='y-percent')) scales['y-percent'] = { type:'linear', position:'left', beginAtZero:true, min:0, max: Math.max(100, yPercentMax), title:{ display:true, text:'Percentage (%)' } };
-    if(datasets.some(ds=>ds.yAxisID==='y-value')) scales['y-value'] = { type:'linear', position:(datasets.some(ds=>ds.yAxisID==='y-percent') ? 'right' : 'left'), beginAtZero:true, min:0, max:yValueMax, title:{ display:true, text:'Value' } };
-  }
-
-  midyearChart = new Chart(ctx, {
-    type:'bar',
-    data:{ labels, datasets },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{
-        legend:{ position:'top' },
-        datalabels:{
-          display:true,
-          color:'#111',
-          font:{ weight:'bold', size:11 },
-          labels:{
-            inside:{
-              anchor:'center', align:'center',
-              formatter: (value, context) => {
-                if(value === null || value === undefined) return null;
-                const ds = context.dataset.label || '';
-                const idx = context.dataIndex;
-
-                if (context.dataset.yAxisID === 'y-percent') {
-                  if (ds.toLowerCase().includes('target')) return (data.percentTarget[idx] !== null && data.percentTarget[idx] !== undefined) ? `${Number(data.percentTarget[idx]).toFixed(settings.decimals)}%` : null;
-                  if (ds.toLowerCase().includes('accomplish')) return (data.percentAccomp[idx] !== null && data.percentAccomp[idx] !== undefined) ? `${Number(data.percentAccomp[idx]).toFixed(settings.decimals)}%` : null;
-                }
-
-                if (context.dataset.yAxisID === 'y-value') {
-                  if (ds.toLowerCase().includes('target')) {
-                    const v = data.valueTarget[idx];
-                    return (v !== null && v !== undefined) ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
-                  }
-                  if (ds.toLowerCase().includes('accomplish')) {
-                    const v = data.valueAccomp[idx];
-                    return (v !== null && v !== undefined) ? (Number.isInteger(v) ? v : Number(v).toFixed(settings.decimals)) : null;
-                  }
-                }
-                return null;
-              }
-            },
-            bottom:{
-              anchor:'end', align:'end', offset:-6,
-              formatter: (value, context) => {
-                if(value === null || value === undefined) return null;
-                const ds = context.dataset.label || '';
-                const idx = context.dataIndex;
-                if ((ds.toLowerCase().includes('accomplish')) && context.dataset.yAxisID === 'y-value') {
-                  const pct = data.percentAccomp[idx];
-                  return (pct !== null && pct !== undefined) ? `${Number(pct).toFixed(settings.decimals)}%` : null;
-                }
-                return null;
-              }
-            }
-          }
-        }
-      },
-      scales
-    }
-  });
-}
-
-/* -------------------------
  Refresh all
 ------------------------- */
 function refreshAll(){
   loadEntries();
   buildMatrix();
   renderReport();
-  // Ensure the chart uses the selector's current value (includes 'midyear')
   renderDynamicChart(chartSelector.value || 'overall');
-  renderMidyearChart();
 }
 
 /* -------------------------
@@ -781,19 +655,17 @@ document.getElementById('clearData').addEventListener('click', ()=> {
     refreshAll();
   }
 });
-// use the selector's value (midyear supported)
+
 chartSelector.addEventListener('change', ()=>{ renderDynamicChart(chartSelector.value); });
 categorySelector.addEventListener('change', e=>{ selectedCategory = e.target.value; localStorage.setItem("lastCategory", selectedCategory); refreshAll(); });
 
-// Back button now redirects to 1trial.html
 document.getElementById('backBtn').addEventListener('click', ()=>{ window.location.href = "1trial.html"; });
 
 window.addEventListener('DOMContentLoaded', ()=>refreshAll());
 
 /* -------------------------
- PDF export (uses same buildChartDataFromMatrix logic)
+ PDF export
 ------------------------- */
-/* (unchanged) — your pdf export code from original file retained below */
 document.getElementById('downloadPDF').addEventListener('click', async () => {
   loadEntries();
   const { jsPDF } = window.jspdf;
@@ -813,7 +685,6 @@ document.getElementById('downloadPDF').addEventListener('click', async () => {
   }
 
   async function createChartImage(matrixLocal, view, category){
-    // Render an offscreen chart using same buildChartDataFromMatrix and datalabels formatting
     const W = 1600, H = 800;
     const off = document.createElement('canvas');
     off.width = W; off.height = H;
@@ -913,7 +784,6 @@ document.getElementById('downloadPDF').addEventListener('click', async () => {
       }
     });
 
-    // allow chart to render
     await new Promise(r => setTimeout(r, 220));
     const dataUrl = off.toDataURL('image/png',1.0);
     chart.destroy();
@@ -925,8 +795,7 @@ document.getElementById('downloadPDF').addEventListener('click', async () => {
   const categoriesToExport = chosenCategory === 'all' ? Object.keys(INDICATORS_BY_CATEGORY) : [chosenCategory];
 
   let pageNum = 1;
-  addHeader: (function(){})();
-  addHeader(pageNum=1);
+  addHeader(pageNum);
 
   for(let i=0;i<categoriesToExport.length;i++){
     const cat = categoriesToExport[i];
@@ -940,13 +809,15 @@ document.getElementById('downloadPDF').addEventListener('click', async () => {
 
     Object.keys(matrixLocal).forEach(ind=>{
       const it = matrixLocal[ind];
-      const valsT = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.target);
-      const valsA = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.accomp);
-      const totalT = computeTotalNumericForIndicator(ind, valsT);
-      const totalA = computeTotalNumericForIndicator(ind, valsA);
+      const valsT = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.target).filter(v=>v !== undefined && v !== null && v !== '');
+      const valsA = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.accomp).filter(v=>v !== undefined && v !== null && v !== '');
+      
+      const totalT = valsT.length >= 2 ? computeTotalNumericForIndicator(ind, valsT) : null;
+      const totalA = valsA.length >= 2 ? computeTotalNumericForIndicator(ind, valsA) : null;
+      
       const hasFractionT = valsT.some(v=> typeof v === 'string' && v.includes('/'));
       const hasFractionA = valsA.some(v=> typeof v === 'string' && v.includes('/'));
-      // determine percent classification for formatted string (use same rules)
+      
       let isPercentT = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || hasFractionT;
       let isPercentA = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || hasFractionA;
       if (cat === "Extension Services") {
@@ -988,24 +859,11 @@ document.getElementById('downloadPDF').addEventListener('click', async () => {
 
     let currentY = pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 12 : 72 + 200;
 
-    const mid = await createChartImage(matrixLocal, 'midyear', cat);
     const ov = await createChartImage(matrixLocal, 'overall', cat);
 
-    const midH = Math.round( usableWidth * (mid.height / mid.width) );
     const ovH  = Math.round( usableWidth * (ov.height / ov.width) );
-    const midTitleHeight = 16;
     const ovTitleHeight = 16;
     const spacing = 8;
-
-    const remainingSpace = pageHeight - currentY - margin;
-    if (remainingSpace < (midH + midTitleHeight + spacing)) {
-      pdf.addPage(); pageNum++; addHeader(pageNum); currentY = 56;
-    }
-
-    pdf.setFontSize(12); pdf.setFont('helvetica','bold');
-    pdf.text(`MIDYEAR CHART — ${cat}`, margin, currentY);
-    pdf.addImage(mid.dataUrl, 'PNG', margin, currentY + spacing, usableWidth, midH);
-    currentY += midH + spacing + midTitleHeight;
 
     const remainingSpaceForAnnual = pageHeight - currentY - margin;
     if (remainingSpaceForAnnual < (ovH + ovTitleHeight)) {
@@ -1040,9 +898,6 @@ document.getElementById('downloadPDF').addEventListener('click', async () => {
   pdf.save('PhysicalPerformanceReport.pdf');
 });
 
-/* -------------------------
- PDF helper + small utils
-------------------------- */
 function formatCellText(v){
   if (v === null || v === undefined || v === '') return '-';
   if (typeof v === 'string' && v.includes('/')) {
