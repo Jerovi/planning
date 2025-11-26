@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHED Performance Dashboard — Advanced Analytics & Reporting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd. min.js"></script>
+    <script src="https://cdnjs. cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf. plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * { 
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .main-container {
+            background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+
+        .header-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-subtitle {
+            font-size: 1rem;
+            opacity: 0.95;
+            margin-top: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+            transform: translateY(-4px);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 0.95rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        select, input[type="text"], textarea {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        select:focus, input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-label {
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #667eea;
+            margin: 0.5rem 0;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.95rem;
+        }
+
+        tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        canvas {
+            max-height: 450px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-good {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .status-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+
+        .status-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .remarks-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #94a3b8;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .small {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: block;
+        }
+
+        #offscreen {
+            position: fixed;
+            left: -9999px;
+            top: -9999px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .header-title {
+                font-size: 1.8rem;
+            }
+
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="header-section fade-in">
+                <div class="header-title">
+                    <i class="fas fa-chart-line"></i>
+                    Performance Dashboard
+                </div>
+                <div class="header-subtitle">Real-time CHED Performance Metrics & Analytics</div>
+            </div>
+
+            <!-- Action Button Group -->
+            <div class="button-group fade-in">
+                <button id="backBtn" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button id="downloadPDF" class="btn btn-success">
+                    <i class="fas fa-file-pdf"></i> Download PDF
+                </button>
+                <button id="exportCSV" class="btn btn-warning">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+                <button id="clearData" class="btn btn-danger">
+                    <i class="fas fa-trash-alt"></i> Clear All
+                </button>
+                <button id="settingsBtn" class="btn btn-primary">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="card fade-in">
+                <div class="control-panel">
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-filter"></i> Select Category
+                        </label>
+                        <select id="categorySelector">
+                            <option value="all">📊 All Categories</option>
+                            <option value="Higher Education">🎓 Higher Education</option>
+                            <option value="Research Program">🔬 Research Program</option>
+                            <option value="Extension Services">🤝 Extension Services</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-eye"></i> Select Report View
+                        </label>
+                        <select id="chartSelector">
+                            <option value="overall">📈 Annual</option>
+                            <option value="midyear">📅 Midyear (Q1 + Q2)</option>
+                            <option value="Q1">Q1</option>
+                            <option value="Q2">Q2</option>
+                            <option value="Q3">Q3</option>
+                            <option value="Q4">Q4</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-info-circle"></i> Status
+                        </label>
+                        <div id="status" class="status-badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1. 5rem; width: 100%; text-align: center;">
+                            No data yet
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Grid -->
+            <div class="stats-grid fade-in">
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-database"></i> Total Records
+                    </div>
+                    <div class="stat-value" id="totalRecords">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-check-circle"></i> Performance Rate
+                    </div>
+                    <div class="stat-value" id="performanceRate">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-tasks"></i> Categories
+                    </div>
+                    <div class="stat-value" id="categoryCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-calendar-alt"></i> Last Updated
+                    </div>
+                    <div class="stat-value" id="lastUpdated" style="font-size: 1rem;">-</div>
+                </div>
+            </div>
+
+            <!-- Data Report Section -->
+            <div class="card fade-in">
+                <div class="chart-title">
+                    <i class="fas fa-table"></i> Data Report
+                </div>
+                <div class="table-container">
+                    <table id="mainReportTable">
+                        <thead>
+                            <tr>
+                                <th>Indicator</th>
+                                <th>Q1</th>
+                                <th>Q2</th>
+                                <th>Q3</th>
+                                <th>Q4</th>
+                                <th>Annual Total</th>
+                                <th>Midyear</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTable">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 3rem;">
+                                    <div class="empty-state">
+                                        <div class="empty-state-icon">📋</div>
+                                        <p>No data available. Start by adding performance metrics.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Main Dynamic Chart -->
+            <div class="chart-container fade-in">
+                <div class="chart-title">
+                    <i class="fas fa-chart-bar"></i> Performance Visualization
+                </div>
+                <canvas id="dynamicChart" aria-label="Performance chart" role="img"></canvas>
+            </div>
+
+            <!-- Midyear Chart -->
+            <div class="chart-container fade-in">
+                <div class="chart-title">
+                    <i class="fas fa-chart-bar"></i> Midyear Analysis (Q1 + Q2)
+                </div>
+                <canvas id="midyearChart" aria-label="Midyear chart" role="img"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1. 5rem;">
+                <h2 style="font-size: 1.5rem; font-weight: 700; color: #334155;">
+                    <i class="fas fa-cog"></i> Settings
+                </h2>
+                <button id="closeSettings" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8;">
+                    ✕
+                </button>
+            </div>
+            <div class="control-group" style="margin-bottom: 1.5rem;">
+                <label class="control-label">Decimal Places</label>
+                <input type="number" id="decimalsInput" min="0" max="5" value="1" style="padding: 0.75rem 1rem;">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button id="saveSettings" class="btn btn-success" style="flex: 1; justify-content: center;">
+                    <i class="fas fa-save"></i> Save
+                </button>
+                <button id="cancelSettings" class="btn btn-primary" style="flex: 1; justify-content: center;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offscreen Container for PDF -->
+    <div id="offscreen"></div>
+
+    <script>
+        Chart.register(ChartDataLabels);
+
+        const COLOR_TARGET = "#667eea";
+        const COLOR_GOOD = "#11998e";
+        const COLOR_BAD = "#eb3349";
+        const COLOR_NEUTRAL = "#cbd5e1";
+
+        const STORAGE_KEY = 'chedData';
+        const REMARKS_KEY = 'chedRemarks';
+        const SETTINGS_KEY = 'chedSettings';
+
+        const INDICATORS_BY_CATEGORY = {
+            "Higher Education": ["Licensure", "Employability", "CHED-RDC", "Accreditation"],
+            "Research Program": ["OC1-Research Utilization", "OP1-Complete Research", "OP2-Research Publish"],
+            "Extension Services": ["OC1-Number of Active Partnership", "OP1-Number of Trainees", "OP2-Number of Extension Programs", "OP3-Satisfactory Rating"]
+        };
+
+        const HIGHER_ED_PERCENTAGE_INDICATORS = ["Licensure", "Employability", "CHED-RDC", "Accreditation"];
+        const DUAL_AXIS_CATEGORIES = ["Research Program", "Extension Services"];
+        const EXTENSION_PERCENT_INDICATORS = ["OP3-Satisfactory Rating"];
+        const DEFAULT_SETTINGS = { decimals: 1 };
+
+        let entries = [];
+        let remarksData = {};
+        let matrix = {};
+        let settings = DEFAULT_SETTINGS;
+        let dynamicChart = null;
+        let midyearChart = null;
+
+        const reportTable = document.getElementById('reportTable');
+        const statusEl = document.getElementById('status');
+        const chartSelector = document.getElementById('chartSelector');
+        const categorySelector = document.getElementById('categorySelector');
+
+        let selectedCategory = localStorage.getItem("lastCategory") || 'all';
+        categorySelector.value = selectedCategory;
+
+        const safeParse = s => { try { return JSON.parse(s); } catch(e) { return []; } };
+        const showStatus = t => { statusEl.textContent = t; };
+
+        function escapeHtml(str) {
+            if(str === null || str === undefined) return '';
+            return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+        }
+
+        function loadEntries() {
+            entries = safeParse(localStorage.getItem(STORAGE_KEY)) || [];
+            remarksData = safeParse(localStorage.getItem(REMARKS_KEY) || "{}") || {};
+            return entries;
+        }
+
+        function saveEntries() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+            updateLastUpdated();
+        }
+
+        function saveRemarks() {
+            localStorage.setItem(REMARKS_KEY, JSON.stringify(remarksData));
+        }
+
+        function loadSettings() {
+            const saved = safeParse(localStorage.getItem(SETTINGS_KEY));
+            settings = { ...DEFAULT_SETTINGS, ...saved };
+            return settings;
+        }
+
+        function saveSettings() {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        }
+
+        function parseFractionToPercent(v) {
+            if (v === null || v === undefined || v === '') return null;
+            if (typeof v === 'number') return v;
+            if (typeof v === 'string') {
+                if (v.includes('/')) {
+                    const parts = v.split('/');
+                    if (parts.length >= 2) {
+                        const n = Number(parts[0]. trim()) || 0;
+                        const d = Number(parts[1].trim()) || 0;
+                        return d > 0 ? (n / d * 100) : null;
+                    }
+                }
+                if (v.includes('%')) {
+                    const n = parseFloat(v.replace('%','').trim());
+                    return isNaN(n) ? null : n;
+                }
+                const n = Number(v.trim());
+                return isNaN(n) ? null : n;
+            }
+            return null;
+        }
+
+        function computeTotalNumericForIndicator(indicator, values) {
+            const filtered = (values || []).filter(v => v !== null && v !== undefined && v !== "");
+            if(filtered.length === 0) return null;
+
+            const hasFraction = filtered.some(v => typeof v === 'string' && v.includes('/'));
+            const hasPercentSign = filtered.some(v => typeof v === 'string' && v.includes('%'));
+
+            let isPercentageIndicator = HIGHER_ED_PERCENTAGE_INDICATORS.includes(indicator) || hasFraction || hasPercentSign;
+
+            if (selectedCategory === "Extension Services") {
+                isPercentageIndicator = EXTENSION_PERCENT_INDICATORS.includes(indicator);
+            }
+
+            if (isPercentageIndicator) {
+                const percs = filtered.map(v=>{
+                    if(typeof v === 'string' && v.includes('/')) return parseFractionToPercent(v);
+                    if(typeof v === 'string' && v. includes('%')) return parseFloat(v.replace('%','')) || null;
+                    const nn = Number(v); return isNaN(nn) ?  null : nn;
+                }). filter(x => x !== null);
+                if(!percs.length) return null;
+                const avg = percs.reduce((a,b)=>a+b,0) / percs.length;
+                return avg;
+            } else {
+                const nums = filtered.map(v=>{
+                    if(typeof v === 'string' && v.includes('/')) {
+                        const p = parseFractionToPercent(v);
+                        return p !== null ? p : null;
+                    }
+                    if(typeof v === 'string' && v.includes('%')) return parseFloat(v.replace('%','')) || null;
+                    const n = Number(v); return isNaN(n) ? null : n;
+                }).filter(n => n !== null);
+                if(!nums.length) return null;
+                return nums.reduce((a,b)=>a+b,0);
+            }
+        }
+
+        function computeTotalFormatted(indicator, values) {
+            const num = computeTotalNumericForIndicator(indicator, values);
+            if(num === null || num === undefined) return "-";
+            let isPercent = HIGHER_ED_PERCENTAGE_INDICATORS.includes(indicator) || (values||[]).some(v=> typeof v === 'string' && (v.includes('%') || v. includes('/')));
+            if (selectedCategory === "Extension Services") isPercent = EXTENSION_PERCENT_INDICATORS.includes(indicator);
+            if(isPercent) return Number(num.toFixed(settings.decimals)) + "%";
+            return Number.isInteger(num) ? num : Number(num.toFixed(settings. decimals));
+        }
+
+        function formatValueForTable(val) {
+            if(val === null || val === undefined || val === '') return "-";
+            if(typeof val === 'string' && val.includes('/')) {
+                const [nS,dS] = val.split('/');
+                const n = Number(nS)||0, d = Number(dS)||0;
+                if(d>0) return `${(n/d*100).toFixed(settings.decimals)}%<span class="small">(${n}/${d})</span>`;
+                return "-";
+            }
+            if(typeof val === 'string' && val.includes('%')) return escapeHtml(val);
+            return escapeHtml(String(val));
+        }
+
+        function buildMatrixForCategory(cat) {
+            const m = {};
+            const base = Array.from(new Set(Object.values(INDICATORS_BY_CATEGORY).flat().concat(entries.map(e=>e.indicator || '')))).filter(Boolean);
+            const indicators = cat === "all" ? base : (INDICATORS_BY_CATEGORY[cat] ? INDICATORS_BY_CATEGORY[cat].slice() : []);
+
+            indicators.forEach(ind => {
+                m[ind] = {Q1:{}, Q2:{}, Q3:{}, Q4:{}, remark: (remarksData && remarksData[ind]) ?  remarksData[ind] : ''};
+            });
+
+            entries.filter(e => cat === 'all' ?  true : e.category === cat).forEach(e => {
+                if (!m[e.indicator]) m[e.indicator] = {Q1:{}, Q2:{}, Q3:{}, Q4:{}, remark: (remarksData && remarksData[e.indicator]) ? remarksData[e.indicator] : ''};
+                m[e.indicator][e.quarter] = {
+                    target: (e.targetWhole && e.targetWhole > 0) ? Number(e.targetWhole) : (e.target !== undefined ? (String(e.target) + (e.targetDenom ? "/" + String(e.targetDenom) : "")) : null),
+                    accomp: (e.accompWhole && e.accompWhole > 0) ? Number(e.accompWhole) : (e. accomp !== undefined ? (String(e.accomp) + (e.accompDenom ? "/" + String(e.accompDenom) : "")) : null)
+                };
+                if(remarksData && remarksData[e.indicator]) m[e.indicator].remark = remarksData[e.indicator];
+            });
+
+            return m;
+        }
+
+        function buildMatrix() {
+            matrix = buildMatrixForCategory(selectedCategory);
+            return matrix;
+        }
+
+        function renderReport() {
+            reportTable.innerHTML = '';
+            const inds = Object.keys(matrix);
+
+            if(inds.length === 0) {
+                reportTable.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 3rem;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <p>No data available. Start by adding performance metrics.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            inds.forEach(ind => {
+                const t = matrix[ind];
+                const valuesTargetRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.target).filter(v=>v !== undefined);
+                const valuesAccompRaw = ['Q1','Q2','Q3','Q4'].map(q=>t[q]?.accomp).filter(v=>v !== undefined);
+
+                const totalTarget = computeTotalFormatted(ind, valuesTargetRaw);
+                const totalAccomp = computeTotalFormatted(ind, valuesAccompRaw);
+
+                const totalTargetMid = computeTotalFormatted(ind, [t.Q1?.target, t.Q2?.target]);
+                const totalAccompMid = computeTotalFormatted(ind, [t.Q1?. accomp, t.Q2?. accomp]);
+
+                const header = document.createElement('tr');
+                header.style.background = 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)';
+                header.innerHTML = `<td colspan="8" style="padding: 0.75rem 1rem; font-weight: 600; color: #334155;">${escapeHtml(ind)}</td>`;
+                reportTable.appendChild(header);
+
+                const trT = document.createElement('tr');
+                const remarkContent = t.remark ? escapeHtml(t.remark) : 'Add remark...';
+                trT.innerHTML = `
+                    <td style="font-weight: 600; color: #667eea;">Target</td>
+                    <td>${formatValueForTable(t.Q1?.target)}</td>
+                    <td>${formatValueForTable(t.Q2?.target)}</td>
+                    <td>${formatValueForTable(t.Q3?.target)}</td>
+                    <td>${formatValueForTable(t.Q4?.target)}</td>
+                    <td style="font-weight: 600;">${totalTarget}</td>
+                    <td style="font-weight: 600;">${totalTargetMid}</td>
+                    <td rowspan="2" style="vertical-align: top;">
+                        <textarea class="remarks-input" data-indicator="${escapeHtml(ind)}" placeholder="Add remarks here...">${remarkContent}</textarea>
+                    </td>
+                `;
+                reportTable.appendChild(trT);
+
+                const trA = document.createElement('tr');
+                trA.innerHTML = `
+                    <td style="font-weight: 600; color: #667eea;">Accomplishment</td>
+                    <td>${formatValueForTable(t.Q1?.accomp)}</td>
+                    <td>${formatValueForTable(t.Q2?.accomp)}</td>
+                    <td>${formatValueForTable(t.Q3?.accomp)}</td>
+                    <td>${formatValueForTable(t.Q4?.accomp)}</td>
+                    <td style="font-weight: 600;">${totalAccomp}</td>
+                    <td style="font-weight: 600;">${totalAccompMid}</td>
+                `;
+                reportTable.appendChild(trA);
+            });
+
+            document.querySelectorAll('.remarks-input'). forEach(cell => {
+                cell.addEventListener('blur', e => {
+                    const ind = e.target.dataset.indicator;
+                    const text = e.target.value.trim();
+                    remarksData[ind] = (text === '' || text === 'Add remark...') ? '' : text;
+                    saveRemarks();
+                    if(matrix[ind]) matrix[ind].remark = remarksData[ind];
+                });
+            });
+
+            updateStatistics();
+            showStatus(`${inds.length} indicator(s) • ${entries.length} record(s)`);
+        }
+
+        function buildChartDataFromMatrix(matrixLocal, view, category = selectedCategory) {
+            const labels = Object.keys(matrixLocal);
+            const percentTarget = [], percentAccomp = [], percentBg = [];
+            const valueTarget = [], valueAccomp = [], valueBg = [];
+
+            const isDualCategory = DUAL_AXIS_CATEGORIES. includes(category);
+
+            labels.forEach(ind => {
+                const t = matrixLocal[ind] || {};
+                let tValRaw, aValRaw;
+
+                if(view === 'overall') {
+                    tValRaw = ['Q1','Q2','Q3','Q4'].map(q => t[q]?.target);
+                    aValRaw = ['Q1','Q2','Q3','Q4'].map(q => t[q]?.accomp);
+                } else if (view === 'midyear') {
+                    tValRaw = [t.Q1?.target, t.Q2?.target];
+                    aValRaw = [t.Q1?.accomp, t.Q2?.accomp];
+                } else {
+                    tValRaw = [t[view]?.target];
+                    aValRaw = [t[view]?.accomp];
+                }
+
+                const tNum = computeTotalNumericForIndicator(ind, tValRaw);
+                const aNum = computeTotalNumericForIndicator(ind, aValRaw);
+
+                const rawHasFractionOrPercent = (tValRaw.concat(aValRaw)).some(v => typeof v === 'string' && (v.includes('/') || v.includes('%')));
+
+                let isPercentIndicator = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || rawHasFractionOrPercent;
+
+                if (category === "Extension Services") {
+                    isPercentIndicator = EXTENSION_PERCENT_INDICATORS.includes(ind);
+                }
+
+                if(isPercentIndicator) {
+                    percentTarget.push(tNum !== null ? Number(tNum.toFixed(settings.decimals)) : null);
+                    percentAccomp.push(aNum !== null ? Number(aNum.toFixed(settings.decimals)) : null);
+                    percentBg.push((aNum !== null && tNum !== null) ? (aNum >= tNum ? COLOR_GOOD : COLOR_BAD) : COLOR_NEUTRAL);
+
+                    valueTarget.push(null);
+                    valueAccomp.push(null);
+                    valueBg.push(null);
+                } else {
+                    valueTarget.push(tNum !== null ? tNum : null);
+                    valueAccomp.push(aNum !== null ? aNum : null);
+                    valueBg.push((aNum !== null && tNum !== null) ? (aNum >= tNum ? COLOR_GOOD : COLOR_BAD) : COLOR_NEUTRAL);
+
+                    if(isDualCategory) {
+                        percentTarget.push(null);
+                        percentAccomp.push((tNum !== null && tNum !== 0 && aNum !== null) ? Number(((aNum / tNum) * 100).toFixed(settings.decimals)) : null);
+                        percentBg.push((tNum !== null && aNum !== null) ? ((aNum >= tNum) ? COLOR_GOOD : COLOR_BAD) : COLOR_NEUTRAL);
+                    } else {
+                        percentTarget.push(null);
+                        percentAccomp.push(null);
+                        percentBg.push(null);
+                    }
+                }
+            });
+
+            return {
+                labels,
+                percentTarget, percentAccomp, percentBg,
+                valueTarget, valueAccomp, valueBg
+            };
+        }
+
+        function computeYAxisMax(values, isPercent=false) {
+            const numeric = (values || []).filter(v => v !== null && v !== undefined). map(Number);
+            if(!numeric.length) return isPercent ? 100 : 1;
+            const max = Math. max(...numeric);
+            if(isPercent) {
+                return Math.min(100, Math.ceil(max * 1.05));
+            } else {
+                const padded = Math.ceil(max * 1.1);
+                return padded > 0 ? padded : Math.ceil(max) + 1;
+            }
+        }
+
+        function renderDynamicChart(view='overall') {
+            if(dynamicChart) { dynamicChart.destroy(); dynamicChart = null; }
+            const canvas = document.getElementById('dynamicChart');
+            const ctx = canvas.getContext('2d');
+
+            const data = buildChartDataFromMatrix(matrix, view, selectedCategory);
+            const labels = data.labels;
+
+            if(labels.length === 0) {
+                ctx.fillStyle = '#cbd5e1';
+                ctx. font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            const isDual = DUAL_AXIS_CATEGORIES.includes(selectedCategory);
+            const yValueMax = computeYAxisMax((data.valueTarget || []).concat(data.valueAccomp || []), false);
+            const yPercentMax = computeYAxisMax((data.percentTarget || []).concat(data.percentAccomp || []), true);
+
+            const datasets = [];
+
+            if (isDual) {
+                if (data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null)) {
+                    datasets.push({
+                        label: 'Value Target',
+                        data: data. valueTarget,
+                        backgroundColor: data.valueTarget.map(_=>COLOR_TARGET),
+                        borderRadius: 8,
+                        barPercentage: 0.6,
+                        yAxisID: 'y-value'
+                    });
+                    datasets.push({
+                        label: 'Value Accomplishment',
+                        data: data.valueAccomp,
+                        backgroundColor: data.valueBg,
+                        borderRadius: 8,
+                        barPercentage: 0.6,
+                        yAxisID: 'y-value'
+                    });
+                }
+                if (data.percentTarget. some(v=>v!==null) || data.percentAccomp.some(v=>v!==null)) {
+                    datasets.push({
+                        label: 'Percentage Target',
+                        data: data.percentTarget,
+                        backgroundColor: data.percentTarget.map(_=>COLOR_TARGET),
+                        borderRadius: 8,
+                        barPercentage: 0.6,
+                        yAxisID: 'y-percent'
+                    });
+                    datasets.push({
+                        label: 'Percentage Accomplishment',
+                        data: data.percentAccomp,
+                        backgroundColor: data.percentBg,
+                        borderRadius: 8,
+                        barPercentage: 0.6,
+                        yAxisID: 'y-percent'
+                    });
+                }
+            } else {
+                datasets.push({
+                    label: 'Target',
+                    data: data.percentTarget,
+                    backgroundColor: data.percentTarget.map(_=>COLOR_TARGET),
+                    borderRadius: 8,
+                    barPercentage: 0.6,
+                    yAxisID: 'y-percent'
+                });
+                datasets.push({
+                    label: 'Accomplishment',
+                    data: data.percentAccomp,
+                    backgroundColor: data.percentBg,
+                    borderRadius: 8,
+                    barPercentage: 0.6,
+                    yAxisID: 'y-percent'
+                });
+            }
+
+            const scales = {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { size: 11 },
+                        autoSkip: false,
+                        maxRotation: 45
+                    }
+                }
+            };
+
+            if (isDual) {
+                scales['y-value'] = {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    min: 0,
+                    max: yValueMax,
+                    title: { display: true, text: 'Value' },
+                    grid: { color: 'rgba(203, 213, 225, 0.2)' }
+                };
+                scales['y-percent'] = {
+                    type: 'linear',
+                    position: 'right',
+                    beginAtZero: true,
+                    min: 0,
+                    max: Math.max(100, yPercentMax),
+                    title: { display: true, text: 'Percentage (%)' },
+                    grid: { drawOnChartArea: false }
+                };
+            } else {
+                scales['y-percent'] = {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    min: 0,
+                    max: Math.max(100, yPercentMax),
+                    title: { display: true, text: 'Percentage (%)' },
+                    grid: { color: 'rgba(203, 213, 225, 0.3)' }
+                };
+            }
+
+            dynamicChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { size: 12 }, usePointStyle: true } },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                title: (items) => items[0].label,
+                                label: (context) => {
+                                    let label = context.dataset.label || '';
+                                    let value = context.parsed.y;
+                                    if (context.dataset.yAxisID === 'y-percent') return `${label}: ${value}%`;
+                                    return `${label}: ${value}`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#1e293b',
+                            font: { weight: 'bold', size: 10 },
+                            anchor: 'end',
+                            align: 'top',
+                            labels: {
+                                inside: {
+                                    anchor: 'center',
+                                    align: 'center',
+                                    formatter: (value) => value !== null ? `${value}` : null
+                                }
+                            }
+                        }
+                    },
+                    scales
+                }
+            });
+        }
+
+        function renderMidyearChart() {
+            if(midyearChart) { midyearChart.destroy(); midyearChart = null; }
+            const canvas = document.getElementById('midyearChart');
+            const ctx = canvas.getContext('2d');
+
+            const data = buildChartDataFromMatrix(matrix, 'midyear', selectedCategory);
+            const labels = data.labels;
+
+            if(labels.length === 0) {
+                ctx.fillStyle = '#cbd5e1';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            const isDual = DUAL_AXIS_CATEGORIES.includes(selectedCategory);
+            const yValueMax = computeYAxisMax((data.valueTarget || []).concat(data.valueAccomp || []), false);
+            const yPercentMax = computeYAxisMax((data.percentTarget || []).concat(data.percentAccomp || []), true);
+
+            const datasets = [];
+
+            if(isDual) {
+                if (data.valueTarget.some(v=>v!==null) || data.valueAccomp.some(v=>v!==null)) {
+                    datasets.push({
+                        label: 'Value Target',
+                        data: data.valueTarget,
+                        backgroundColor: data.valueTarget.map(_=>COLOR_TARGET),
+                        borderRadius: 8,
+                        yAxisID: 'y-value'
+                    });
+                    datasets.push({
+                        label: 'Value Accomplishment',
+                        data: data.valueAccomp,
+                        backgroundColor: data.valueBg,
+                        borderRadius: 8,
+                        yAxisID: 'y-value'
+                    });
+                }
+                if (data.percentTarget.some(v=>v!==null) || data.percentAccomp.some(v=>v!==null)) {
+                    datasets.push({
+                        label: 'Percentage Target',
+                        data: data.percentTarget,
+                        backgroundColor: data.percentTarget.map(_=>COLOR_TARGET),
+                        borderRadius: 8,
+                        yAxisID: 'y-percent'
+                    });
+                    datasets.push({
+                        label: 'Percentage Accomplishment',
+                        data: data.percentAccomp,
+                        backgroundColor: data.percentBg,
+                        borderRadius: 8,
+                        yAxisID: 'y-percent'
+                    });
+                }
+            } else {
+                datasets. push({
+                    label: 'Percentage Target',
+                    data: data. percentTarget,
+                    backgroundColor: data.percentTarget.map(_=>COLOR_TARGET),
+                    borderRadius: 8,
+                    yAxisID: 'y-percent'
+                });
+                datasets.push({
+                    label: 'Percentage Accomplishment',
+                    data: data.percentAccomp,
+                    backgroundColor: data.percentBg,
+                    borderRadius: 8,
+                    yAxisID: 'y-percent'
+                });
+            }
+
+            const scales = { x: { grid: { display: false } } };
+
+            if(isDual) {
+                if(datasets.some(ds=>ds.yAxisID==='y-value')) {
+                    scales['y-value'] = {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: true,
+                        min: 0,
+                        max: yValueMax,
+                        title: { display: true, text: 'Value' }
+                    };
+                }
+                scales['y-percent'] = {
+                    type: 'linear',
+                    position: 'right',
+                    beginAtZero: true,
+                    min: 0,
+                    max: Math.max(100, yPercentMax),
+                    title: { display: true, text: 'Percentage (%)' },
+                    grid: { drawOnChartArea: false }
+                };
+            } else {
+                scales['y-percent'] = {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    min: 0,
+                    max: Math.max(100, yPercentMax),
+                    title: { display: true, text: 'Percentage (%)' }
+                };
+            }
+
+            midyearChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { size: 12 }, usePointStyle: true } },
+                        datalabels: {
+                            display: true,
+                            color: '#1e293b',
+                            font: { weight: 'bold', size: 11 },
+                            labels: {
+                                inside: {
+                                    anchor: 'center',
+                                    align: 'center',
+                                    formatter: (value) => value !== null ? `${value}` : null
+                                }
+                            }
+                        }
+                    },
+                    scales
+                }
+            });
+        }
+
+        function updateStatistics() {
+            const totalRecords = entries.length;
+            const categories = new Set(entries.map(e => e.category)).size;
+
+            let performanceCount = 0, totalCount = 0;
+
+            Object.keys(matrix).forEach(ind => {
+                const t = matrix[ind];
+                const valsA = ['Q1','Q2','Q3','Q4'].map(q => t[q]?. accomp).filter(v => v !== undefined);
+                const valsT = ['Q1','Q2','Q3','Q4'].map(q => t[q]?.target).filter(v => v !== undefined);
+
+                const a = computeTotalNumericForIndicator(ind, valsA);
+                const target = computeTotalNumericForIndicator(ind, valsT);
+
+                if(a !== null && target !== null) {
+                    totalCount++;
+                    if(a >= target) performanceCount++;
+                }
+            });
+
+            const performanceRate = totalCount > 0 ? Math.round((performanceCount / totalCount) * 100) : 0;
+
+            document.getElementById('totalRecords').textContent = totalRecords;
+            document.getElementById('performanceRate').textContent = performanceRate + '%';
+            document.getElementById('categoryCount').textContent = categories;
+        }
+
+        function updateLastUpdated() {
+            const now = new Date();
+            const time = now.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('lastUpdated').textContent = time;
+        }
+
+        function refreshAll() {
+            loadEntries();
+            loadSettings();
+            buildMatrix();
+            renderReport();
+            renderDynamicChart(chartSelector. value || 'overall');
+            renderMidyearChart();
+            updateLastUpdated();
+        }
+
+        function exportToCSV() {
+            if(entries.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            let csv = 'Indicator,Quarter,Target,Accomplishment,Category,Remarks\n';
+
+            entries.forEach(e => {
+                const target = e.targetWhole ? e.targetWhole : (e.target + (e.targetDenom ? '/' + e.targetDenom : ''));
+                const accomp = e.accompWhole ? e.accompWhole : (e.accomp + (e.accompDenom ? '/' + e.accompDenom : ''));
+                const remarks = remarksData[e.indicator] || '';
+                csv += `"${e.indicator}","${e.quarter}","${target}","${accomp}","${e. category}","${remarks}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document. createElement('a');
+            a. href = url;
+            a. download = `CHED_Report_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            alert('✅ CSV exported successfully! ');
+        }
+
+        document.getElementById('clearData').addEventListener('click', () => {
+            if(confirm('⚠️ Are you sure you want to remove all data and remarks? This action cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(REMARKS_KEY);
+                entries = [];
+                remarksData = {};
+                saveEntries();
+                saveRemarks();
+                refreshAll();
+                alert('✅ All data cleared successfully!');
+            }
+        });
+
+        document.getElementById('exportCSV').addEventListener('click', exportToCSV);
+
+        chartSelector.addEventListener('change', () => {
+            renderDynamicChart(chartSelector. value);
+        });
+
+        categorySelector.addEventListener('change', e => {
+            selectedCategory = e.target.value;
+            localStorage.setItem("lastCategory", selectedCategory);
+            refreshAll();
+        });
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            window.location.href = "1trial.html";
+        });
+
+        const settingsModal = document.getElementById('settingsModal');
+        const decimalsInput = document.getElementById('decimalsInput');
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            decimalsInput.value = settings.decimals;
+            settingsModal.classList.add('active');
+        });
+
+        document.getElementById('closeSettings').addEventListener('click', () => {
+            settingsModal.classList. remove('active');
+        });
+
+        document.getElementById('cancelSettings').addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+        });
+
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            settings.decimals = parseInt(decimalsInput.value) || 1;
+            saveSettings();
+            refreshAll();
+            settingsModal.classList.remove('active');
+            alert('✅ Settings saved successfully!');
+        });
+
+        settingsModal.addEventListener('click', (e) => {
+            if(e.target === settingsModal) {
+                settingsModal.classList.remove('active');
+            }
+        });
+
+        document.getElementById('downloadPDF').addEventListener('click', async () => {
+            loadEntries();
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('l', 'pt', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 30;
+            const usableWidth = pageWidth - margin * 2;
+            const now = new Date();
+            const formattedDate = now.toLocaleString('en-PH', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+
+            function addHeader(pageNum) {
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica','bold');
+                pdf.text(`CHED — Performance Report`, margin, 30);
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica','normal');
+                pdf.text(`DATE: ${formattedDate}`, pageWidth - margin - 160, 30);
+            }
+
+            const chosenCategory = categorySelector.value || 'all';
+            const categoriesToExport = chosenCategory === 'all' ?  Object.keys(INDICATORS_BY_CATEGORY) : [chosenCategory];
+
+            addHeader(1);
+
+            for(let i=0; i<categoriesToExport.length; i++) {
+                const cat = categoriesToExport[i];
+                const matrixLocal = buildMatrixForCategory(cat);
+
+                pdf.setFontSize(13);
+                pdf.setFont('helvetica','bold');
+                pdf.text(`Data Report — ${cat}`, margin, 56);
+
+                const headers = [["Indicator", "Type", "Q1", "Q2", "Q3", "Q4", "Total", "Remarks"]];
+                const body = [];
+
+                Object.keys(matrixLocal).forEach(ind => {
+                    const it = matrixLocal[ind];
+                    const valsT = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.target);
+                    const valsA = ['Q1','Q2','Q3','Q4'].map(q => it[q]?.accomp);
+                    const totalT = computeTotalNumericForIndicator(ind, valsT);
+                    const totalA = computeTotalNumericForIndicator(ind, valsA);
+
+                    let isPercentT = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || valsT.some(v => typeof v === 'string' && v.includes('/'));
+                    let isPercentA = HIGHER_ED_PERCENTAGE_INDICATORS.includes(ind) || valsA.some(v => typeof v === 'string' && v.includes('/'));
+
+                    if (cat === "Extension Services") {
+                        isPercentT = EXTENSION_PERCENT_INDICATORS.includes(ind);
+                        isPercentA = EXTENSION_PERCENT_INDICATORS.includes(ind);
+                    }
+
+                    const totalTformatted = (isPercentT) ? (totalT !== null ? `${totalT. toFixed(settings.decimals)}%` : '-') : (totalT !== null ? (Number. isInteger(totalT) ? totalT : totalT.toFixed(settings.decimals)) : '-');
+                    const totalAformatted = (isPercentA) ? (totalA !== null ? `${totalA.toFixed(settings.decimals)}%` : '-') : (totalA !== null ? (Number.isInteger(totalA) ? totalA : totalA.toFixed(settings.decimals)) : '-');
+
+                    body.push([
+                        ind, "Target",
+                        it.Q1?. target || '-',
+                        it.Q2?.target || '-',
+                        it.Q3?.target || '-',
+                        it.Q4?.target || '-',
+                        totalTformatted,
+                        { content: it.remark || '', rowSpan: 2 }
+                    ]);
+                    body.push([
+                        "", "Accomplishment",
+                        it.Q1?.accomp || '-',
+                        it.Q2?.accomp || '-',
+                        it.Q3?.accomp || '-',
+                        it.Q4?.accomp || '-',
+                        totalAformatted
+                    ]);
+                });
+
+                pdf.autoTable({
+                    head: headers,
+                    body: body,
+                    startY: 72,
+                    theme: 'grid',
+                    headStyles: { fillColor: [102, 126, 234], textColor: 255 },
+                    styles: { fontSize: 8, cellPadding: 4, halign: 'center', valign: 'middle' },
+                    columnStyles: { 0: { halign: 'left' }, 1: { halign: 'center' }, 7: { halign: 'left', cellWidth: 'wrap' } },
+                    margin: { left: margin, right: margin }
+                });
+
+                if(i < categoriesToExport.length - 1) {
+                    pdf.addPage();
+                    addHeader(i + 2);
+                }
+            }
+
+            pdf.addPage();  addHeader(pageNum+1);
+            let sigY = 120;
+            const col1 = margin;
+            const col2 = pageWidth / 3;
+            const col3 = (pageWidth / 3) * 2 - 20;
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'normal');
+            pdf. text("Prepared by:", col1, sigY + 15);
+            pdf.line(col1, sigY + 60, col1 + 150, sigY + 60);
+            pdf.text("Signature over Printed Name", col1, sigY + 75);
+            pdf.text("Approved by:", col2, sigY + 15);
+            pdf.line(col2, sigY + 60, col2 + 150, sigY + 60);
+            pdf.text("Authorized Official", col2, sigY + 75);
+            pdf.text("In coordination with:", col3, sigY + 15);
+            pdf.line(col3, sigY + 60, col3 + 150, sigY + 60);
+            pdf.text("Partner Agency / Office", col3, sigY + 75);
+
+            pdf.save('PhysicalPerformanceReport.pdf');
+            alert('✅ PDF downloaded successfully!');
+        });
+
+        window.addEventListener('DOMContentLoaded', () => refreshAll());
+        
+        function formatCellText(v){
+  if (v === null || v === undefined || v === '') return '-';
+  if (typeof v === 'string' && v.includes('/')) {
+    const [nS, dS] = v.split('/');
+    const n = Number(nS)||0, d = Number(dS)||0;
+    if(d>0) return `${(n/d*100).toFixed(settings.decimals)}% (${n}/${d})`;
+    return '-';
+  }
+  return v;
+}
+    </script>
+</body>
+</html>
